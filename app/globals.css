@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+:root {
+  --oect-blue-900: #0B1E36;
+  --oect-blue-800: #102A4C;
+  --oect-blue-700: #173B6B;
+  --oect-blue-600: #1E4E8C;
+  --oect-blue-500: #2B6CB0;
+  --oect-blue-100: #EBF8FF;
+  --oect-gold-500: #D69E2E;
+  --oect-gold-400: #ECC94B;
+  --oect-gold-100: #FEFCBF;
+  --oect-bg: #F4F7FA;
+  --oect-surface: #FFFFFF;
+  --oect-border: #E2E8F0;
+  --oect-text-main: #1A202C;
+  --oect-text-muted: #718096;
+}
+
+@theme inline {
+  --color-oect-blue-900: var(--oect-blue-900);
+  --color-oect-blue-800: var(--oect-blue-800);
+  --color-oect-blue-700: var(--oect-blue-700);
+  --color-oect-blue-600: var(--oect-blue-600);
+  --color-oect-gold-500: var(--oect-gold-500);
+  --color-oect-gold-400: var(--oect-gold-400);
+  --color-oect-bg: var(--oect-bg);
+  --font-prompt: var(--font-prompt);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--oect-bg);
+  color: var(--oect-text-main);
+  font-family: var(--font-prompt), 'Prompt', -apple-system, BlinkMacSystemFont, 'Sarabun', sans-serif;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom OECT Government Header Gradient */
+.oect-header-gradient {
+  background: linear-gradient(135deg, #0B1E36 0%, #173B6B 60%, #1E4E8C 100%);
+}
+
+.oect-card {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F4F7FA;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E0;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A0AEC0;
+}
