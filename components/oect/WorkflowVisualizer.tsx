@@ -1,20 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  GitFork, 
-  Clock, 
-  ShieldCheck, 
-  ChevronRight, 
-  FileText, 
-  Layers, 
-  Building, 
-  Scale, 
-  Users, 
-  AlertCircle,
-  CheckCircle2,
-  HelpCircle
-} from "lucide-react";
+import { Building, Scale, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function WorkflowVisualizer() {
   const [selectedView, setSelectedView] = useState<"page1" | "page2">("page1");
@@ -26,13 +13,13 @@ export default function WorkflowVisualizer() {
       <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-1.5 h-4 bg-[#173B6B] rounded-full" />
+            <span className="w-1.5 h-4 bg-[#1B3F8B] rounded-full" />
             <h2 className="text-base sm:text-lg font-semibold text-[#1A202C]">
               กระบวนการดำเนินงานตามกฎหมาย (Workflow & Legal SLA Engine)
             </h2>
           </div>
           <p className="text-xs text-[#718096] mt-0.5">
-            อ้างอิงตามระเบียบคณะกรรมการการเลือกตั้ง ว่าด้วยการสืบสวน การไต่สวน และการวินิจฉัยชี้ขาด พ.ศ. ๒๕๖๑ (ฉบับที่ ๓)
+            อ้างอิงตามระเบียบคณะกรรมการการเลือกตั้ง ว่าด้วยการสืบสวน การไต่สวน และการวินิจฉัยชี้ขาด พ.ศ. ๒๕๖๖ ฉบับที่ (๓)
           </p>
         </div>
 
@@ -42,7 +29,7 @@ export default function WorkflowVisualizer() {
             onClick={() => setSelectedView("page1")}
             className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${
               selectedView === "page1"
-                ? "bg-[#173B6B] text-white shadow-xs"
+                ? "bg-[#1B3F8B] text-white shadow-xs"
                 : "text-[#718096] hover:text-[#1A202C]"
             }`}
           >
@@ -52,7 +39,7 @@ export default function WorkflowVisualizer() {
             onClick={() => setSelectedView("page2")}
             className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${
               selectedView === "page2"
-                ? "bg-[#173B6B] text-white shadow-xs"
+                ? "bg-[#1B3F8B] text-white shadow-xs"
                 : "text-[#718096] hover:text-[#1A202C]"
             }`}
           >
@@ -86,7 +73,7 @@ export default function WorkflowVisualizer() {
             
             <div className="flex items-center justify-between pb-4 border-b border-[#EDF2F7]">
               <h3 className="text-sm font-semibold text-[#1A202C] flex items-center gap-2">
-                <Building className="w-4 h-4 text-[#1E4E8C]" />
+                <Building className="w-4 h-4 text-[#1B3F8B]" />
                 <span>แผนผังขั้นตอนการดำเนินงาน สนง.กกต.จว.</span>
               </h3>
               <span className="text-xs text-[#718096]">SLA สูงสุดระดับจังหวัด: 90 วัน</span>
@@ -97,7 +84,7 @@ export default function WorkflowVisualizer() {
               
               <div className="p-4 rounded-2xl bg-[#F7FAFC] border border-[#E2E8F0] space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-[#1E4E8C]">1. ขั้นตรวจคำร้อง (กรณีครบถ้วน)</span>
+                  <span className="text-xs font-semibold text-[#1B3F8B]">1. ขั้นตรวจคำร้อง (กรณีครบถ้วน)</span>
                   <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">3 วัน</span>
                 </div>
                 <p className="text-xs text-[#4A5568] font-light">
@@ -118,23 +105,23 @@ export default function WorkflowVisualizer() {
             </div>
 
             {/* Decision Branch: ผอ.กกต.จว. สั่งรับ / ไม่รับ */}
-            <div className="p-5 rounded-2xl bg-[#EBF8FF] border border-[#BEE3F8] space-y-4">
+            <div className="p-5 rounded-2xl bg-[#4FB3E8]/10 border border-[#4FB3E8]/40 space-y-4">
               <div className="flex items-center justify-between">
-                <div className="font-semibold text-xs text-[#1E4E8C]">
+                <div className="font-semibold text-xs text-[#1B3F8B]">
                   คำสั่ง ผอ.กกต.จว. (กรอบเวลาพิจารณา 3 วัน)
                 </div>
-                <span className="text-[11px] text-[#2B6CB0]">ข้อ 26 ว.2 และ ข้อ 28</span>
+                <span className="text-[11px] text-[#1B3F8B]">ข้อ 26 ว.2 และ ข้อ 28</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Branch A: สั่งรับ */}
-                <div className="bg-white p-4 rounded-xl border border-[#BEE3F8] space-y-2">
+                <div className="bg-white p-4 rounded-xl border border-[#4FB3E8]/40 space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     <span>คำสั่งรับคำร้อง (ข้อ 26 ว.2)</span>
                   </div>
                   <ul className="text-xs text-[#4A5568] space-y-1 font-light list-disc list-inside">
-                    <li>รายงาน กกต. (แบบ สสว.1, สสว.1/1) ภายใน 3 วัน</li>
+                    <li>รายงาน กกต. (แบบ สตว.1, สตว.1/1) ภายใน 3 วัน</li>
                     <li>ตั้งคณะกรรมการสืบสวนและไต่สวน (สว./ตส.)</li>
                     <li><strong>ระยะเวลาสืบสวน: 20 วัน</strong></li>
                     <li>ขยายระยะเวลาได้ <strong>15 + 15 วัน</strong> รวมไม่เกิน 90 วัน</li>
@@ -169,7 +156,7 @@ export default function WorkflowVisualizer() {
             
             <div className="flex items-center justify-between pb-4 border-b border-[#EDF2F7]">
               <h3 className="text-sm font-semibold text-[#1A202C] flex items-center gap-2">
-                <Scale className="w-4 h-4 text-[#1E4E8C]" />
+                <Scale className="w-4 h-4 text-[#1B3F8B]" />
                 <span>แผนผังขั้นตอนการดำเนินงาน สนง.กกต. ส่วนกลาง และ กกต.</span>
               </h3>
               <span className="text-xs text-[#718096]">SLA ตรวจสำนวน & วินิจฉัยชี้ขาด</span>
@@ -179,7 +166,7 @@ export default function WorkflowVisualizer() {
               
               {/* Left Column: กรณีคำร้อง (สั่งไม่รับจากจังหวัด) */}
               <div className="space-y-3 p-5 rounded-2xl bg-[#F7FAFC] border border-[#E2E8F0]">
-                <div className="font-semibold text-xs text-[#1E4E8C] flex items-center justify-between border-b pb-2">
+                <div className="font-semibold text-xs text-[#1B3F8B] flex items-center justify-between border-b pb-2">
                   <span>กรณีคำร้อง (สั่งไม่รับจากจังหวัด)</span>
                   <span className="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-full font-bold">รวม 30 วัน</span>
                 </div>
@@ -187,19 +174,19 @@ export default function WorkflowVisualizer() {
                 <div className="space-y-2 text-xs">
                   <div className="p-2.5 rounded-xl bg-white border border-[#EDF2F7] flex justify-between">
                     <span>1. พนักงานวิเคราะห์คำร้อง</span>
-                    <span className="font-semibold text-[#1E4E8C]">20 วัน</span>
+                    <span className="font-semibold text-[#1B3F8B]">20 วัน</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white border border-[#EDF2F7] flex justify-between">
                     <span>2. ผอ.ฝ่าย มีความเห็น</span>
-                    <span className="font-semibold text-[#1E4E8C]">2 วัน</span>
+                    <span className="font-semibold text-[#1B3F8B]">2 วัน</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white border border-[#EDF2F7] flex justify-between">
                     <span>3. รอง ผอ.สำนัก มีความเห็น</span>
-                    <span className="font-semibold text-[#1E4E8C]">2 วัน</span>
+                    <span className="font-semibold text-[#1B3F8B]">2 วัน</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white border border-[#EDF2F7] flex justify-between">
                     <span>4. ผอ.สำนัก มีความเห็น</span>
-                    <span className="font-semibold text-[#1E4E8C]">1 วัน</span>
+                    <span className="font-semibold text-[#1B3F8B]">1 วัน</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 flex justify-between font-medium">
                     <span>5. ลธ.กกต. มีความเห็น</span>
@@ -212,30 +199,30 @@ export default function WorkflowVisualizer() {
               </div>
 
               {/* Right Column: กรณีสำนวน (สืบสวนเสร็จสิ้น) */}
-              <div className="space-y-3 p-5 rounded-2xl bg-[#FAF8F5] border border-[#E8E3DA]">
-                <div className="font-semibold text-xs text-[#9A7E41] flex items-center justify-between border-b pb-2">
+              <div className="space-y-3 p-5 rounded-2xl bg-[#FFD600]/10 border border-[#FFD600]/35">
+                <div className="font-semibold text-xs text-[#1B3F8B] flex items-center justify-between border-b pb-2">
                   <span>กรณีสำนวน (สืบสวนเสร็จสิ้น)</span>
-                  <span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold">รวม 60 + 9 วัน</span>
+                  <span className="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold">รวมไม่เกิน 60 วัน</span>
                 </div>
 
                 <div className="space-y-2 text-xs">
                   <div className="p-2.5 rounded-xl bg-white border border-[#EDF2F7] flex justify-between">
                     <span>1. พนักงานวิเคราะห์สำนวน</span>
-                    <span className="font-semibold text-[#9A7E41]">30 วัน</span>
+                    <span className="font-semibold text-[#1B3F8B]">30 วัน</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white border border-[#EDF2F7] flex justify-between">
                     <span>2. ผอ.ฝ่าย + รอง ผอ. + ผอ.สำนัก (คนละ 7 วัน)</span>
-                    <span className="font-semibold text-[#9A7E41]">21 วัน</span>
+                    <span className="font-semibold text-[#1B3F8B]">21 วัน</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white border border-[#EDF2F7] flex justify-between">
                     <span>3. ลธ.กกต. มีความเห็น</span>
-                    <span className="font-semibold text-[#9A7E41]">9 วัน (รวม 69 วัน)</span>
+                    <span className="font-semibold text-[#1B3F8B]">9 วัน (อยู่ในกรอบรวม 60 วัน)</span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 flex justify-between font-medium">
+                  <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 flex justify-between font-medium">
                     <span>4. คณะอนุวินิจฉัย มีความเห็น</span>
-                    <span className="font-bold text-indigo-900">90 วัน (ข้อ 79)</span>
+                    <span className="font-bold text-blue-900">90 วัน (ข้อ 79)</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-[#0B1E36] text-white text-center font-semibold">
+                  <div className="p-3 rounded-xl bg-[#1B3F8B] text-white text-center font-semibold">
                     5. กกต. วินิจฉัยชี้ขาด (90 วัน) & จัดทำคำวินิจฉัย (60 วัน)
                   </div>
                 </div>

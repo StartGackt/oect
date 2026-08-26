@@ -1,55 +1,27 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  ChevronLeft, 
-  ChevronRight, 
-  Eye, 
-  FileSpreadsheet, 
-  FileText, 
-  CheckCircle2, 
-  AlertCircle, 
-  Clock, 
-  MapPin, 
-  ArrowUpDown,
-  ShieldCheck,
-  Plus
-} from "lucide-react";
-
-interface ComplaintItem {
-  id: number;
-  electionType: string;
-  announcementDate: string;
-  caseNumber: string;
-  electionDate: string;
-  receivedDate: string;
-  constituency: string;
-  district: string;
-  province: string;
-  officer: string;
-  complainants: string;
-  respondent: string;
-  allegation: string;
-  details: string;
-  missionGroup: string;
-  currentStage: string;
-  currentSection: string;
-  stageId: number;
-  slaDays: number;
-  remainingDays: number;
-  slaStatus: string;
-}
+import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Eye, FileSpreadsheet, Plus, Search } from "lucide-react";
+import { ELECTION_TYPE_OPTIONS, MISSION_GROUP_OPTIONS, formatThaiDate, getCaseKind, getSlaLabel, type ComplaintItem } from "@/components/oect/complaintDomain";
 
 interface CaseListViewProps {
   cases: ComplaintItem[];
-  onSelectCase: (c: ComplaintItem) => void;
+  onSelectCase: (caseItem: ComplaintItem) => void;
   openNewModal: () => void;
   searchQuery?: string;
-  setSearchQuery?: (q: string) => void;
+  setSearchQuery?: (query: string) => void;
+  statusFilter?: string;
+  setStatusFilter?: (status: string) => void;
 }
+
+const STATUS_TABS = [
+  { id: "ALL", label: "ทั้งหมด" },
+  { id: "NEW", label: "ข้อมูลเข้าใหม่" },
+  { id: "NORMAL", label: "ปกติ" },
+  { id: "NEAR_DUE", label: "ใกล้ครบกำหนด" },
+  { id: "OVERDUE", label: "เกินกำหนด" },
+  { id: "COMPLETED", label: "เสร็จสิ้น" },
+];
 
 export default function CaseListView({
   cases,
@@ -57,324 +29,184 @@ export default function CaseListView({
   openNewModal,
   searchQuery: externalSearchQuery,
   setSearchQuery: externalSetSearchQuery,
+  statusFilter: externalStatusFilter,
+  setStatusFilter: externalSetStatusFilter,
 }: CaseListViewProps) {
-  const [internalSearchQuery, setInternalSearchQuery] = useState<string>("");
-  const searchQuery = externalSearchQuery !== undefined ? externalSearchQuery : internalSearchQuery;
-  const setSearchQuery = externalSetSearchQuery || setInternalSearchQuery;
-
-  const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
-  const [selectedProvince, setSelectedProvince] = useState<string>("ALL");
-  const [selectedMission, setSelectedMission] = useState<string>("ALL");
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [internalSearchQuery, setInternalSearchQuery] = useState("");
+  const [internalStatusFilter, setInternalStatusFilter] = useState("ALL");
+  const [selectedProvince, setSelectedProvince] = useState("ALL");
+  const [selectedMission, setSelectedMission] = useState("ALL");
+  const [selectedElectionType, setSelectedElectionType] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
-  // Filter cases
-  const filteredCases = useMemo(() => {
-    return cases.filter((c) => {
-      // Global search
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const match =
-          c.caseNumber.toLowerCase().includes(q) ||
-          c.province.toLowerCase().includes(q) ||
-          c.district.toLowerCase().includes(q) ||
-          c.complainants.toLowerCase().includes(q) ||
-          c.respondent.toLowerCase().includes(q) ||
-          c.allegation.toLowerCase().includes(q) ||
-          c.officer.toLowerCase().includes(q);
-        if (!match) return false;
-      }
+  const searchQuery = externalSearchQuery ?? internalSearchQuery;
+  const setSearchQuery = externalSetSearchQuery ?? setInternalSearchQuery;
+  const selectedStatus = externalStatusFilter ?? internalStatusFilter;
+  const setSelectedStatus = externalSetStatusFilter ?? setInternalStatusFilter;
 
-      // Status filter
-      if (selectedStatus !== "ALL" && c.slaStatus !== selectedStatus) return false;
+  const filteredCases = useMemo(() => cases.filter((caseItem) => {
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      const searchTarget = [
+        caseItem.caseNumber,
+        caseItem.province,
+        caseItem.district,
+        caseItem.complainants,
+        caseItem.respondent,
+        caseItem.allegation,
+        caseItem.officer,
+      ].join(" ").toLowerCase();
+      if (!searchTarget.includes(query)) return false;
+    }
+    if (selectedStatus === "NEW" && caseItem.stageId !== 1) return false;
+    if (selectedStatus !== "ALL" && selectedStatus !== "NEW" && caseItem.slaStatus !== selectedStatus) return false;
+    if (selectedProvince !== "ALL" && caseItem.province !== selectedProvince) return false;
+    if (selectedMission !== "ALL" && caseItem.missionGroup !== selectedMission) return false;
+    if (selectedElectionType !== "ALL" && caseItem.electionType !== selectedElectionType) return false;
+    return true;
+  }), [cases, searchQuery, selectedElectionType, selectedMission, selectedProvince, selectedStatus]);
 
-      // Province filter
-      if (selectedProvince !== "ALL" && c.province !== selectedProvince) return false;
-
-      // Mission filter
-      if (selectedMission !== "ALL" && c.missionGroup !== selectedMission) return false;
-
-      return true;
-    });
-  }, [cases, searchQuery, selectedStatus, selectedProvince, selectedMission]);
-
-  // Pagination
   const totalPages = Math.ceil(filteredCases.length / itemsPerPage) || 1;
-  const paginatedCases = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredCases.slice(start, start + itemsPerPage);
-  }, [filteredCases, currentPage]);
+  const effectivePage = Math.min(currentPage, totalPages);
+  const pageStart = (effectivePage - 1) * itemsPerPage;
+  const paginatedCases = filteredCases.slice(pageStart, pageStart + itemsPerPage);
+  const provinceList = useMemo(() => Array.from(new Set(cases.map((caseItem) => caseItem.province))).sort(), [cases]);
 
-  // Province list
-  const provinceList = useMemo(() => {
-    const set = new Set(cases.map((c) => c.province));
-    return Array.from(set).sort();
-  }, [cases]);
+  const statusCount = (status: string) => {
+    if (status === "ALL") return cases.length;
+    if (status === "NEW") return cases.filter((caseItem) => caseItem.stageId === 1).length;
+    return cases.filter((caseItem) => caseItem.slaStatus === status).length;
+  };
 
   return (
     <div className="space-y-5 pb-14">
-      
-      {/* Top Action Bar */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4">
-        
-        {/* Row 1: Search & Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-[#A0AEC0] absolute left-3.5 top-1/2 -translate-y-1/2" />
+      <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <label className="relative w-full max-w-lg">
+            <span className="sr-only">ค้นหาเรื่องร้องเรียน</span>
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
-              type="text"
-              placeholder="ค้นหาเลขที่เรื่อง, ผู้ร้อง, ผู้ถูกร้อง, ข้อกล่าวหา, จังหวัด..."
+              type="search"
+              placeholder="ค้นหาเลขที่เรื่อง ผู้ร้อง ผู้ถูกร้อง ข้อกล่าวหา หรือจังหวัด"
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-9 pr-4 py-2 text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-xl focus:outline-none focus:border-[#1E4E8C] focus:bg-white transition-all"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-xs outline-none transition focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-100"
             />
-          </div>
-
-          <div className="flex items-center gap-2.5 self-end sm:self-auto">
-            <button
-              onClick={() => alert("ระบบกำลังส่งออกข้อมูลเป็นไฟล์ Excel (.xlsx)")}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#F7FAFC] border border-[#E2E8F0] hover:bg-[#EDF2F7] rounded-xl text-xs text-[#2D3748] font-medium transition-colors"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-              <span>ส่งออก Excel</span>
-            </button>
-
-            <button
-              onClick={openNewModal}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#173B6B] hover:bg-[#0B1E36] text-white rounded-xl text-xs font-medium transition-colors shadow-xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ บันทึกเรื่องร้องเรียนใหม่</span>
-            </button>
+          </label>
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button type="button" onClick={() => alert("เตรียมส่งออกข้อมูลตามตัวกรองเป็นไฟล์ Excel (.xlsx)")} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"><FileSpreadsheet className="h-4 w-4 text-emerald-600" /> ส่งออก Excel</button>
+            <button type="button" onClick={openNewModal} className="inline-flex items-center gap-1.5 rounded-xl bg-[#1B3F8B] px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-[#1B3F8B]"><Plus className="h-4 w-4" /> บันทึกเรื่องใหม่</button>
           </div>
         </div>
 
-        {/* Row 2: Filter Pills & Status Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#EDF2F7]">
-          
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            {[
-              { id: "ALL", label: "ทั้งหมด", count: cases.length },
-              { id: "NORMAL", label: "🟢 ในเกณฑ์ปกติ", count: cases.filter((c) => c.slaStatus === "NORMAL").length },
-              { id: "NEAR_DUE", label: "🟡 ใกล้ครบกำหนด", count: cases.filter((c) => c.slaStatus === "NEAR_DUE").length },
-              { id: "OVERDUE", label: "🔴 เกินกำหนด", count: cases.filter((c) => c.slaStatus === "OVERDUE").length },
-              { id: "COMPLETED", label: "⚪ เสร็จสิ้น", count: cases.filter((c) => c.slaStatus === "COMPLETED").length },
-            ].map((tab) => (
+        <div className="flex flex-col gap-3 border-t border-slate-100 pt-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+            {STATUS_TABS.map((tab) => (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => {
                   setSelectedStatus(tab.id);
                   setCurrentPage(1);
                 }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-                  selectedStatus === tab.id
-                    ? "bg-[#1E4E8C] text-white shadow-2xs"
-                    : "bg-[#F7FAFC] text-[#4A5568] hover:bg-[#EDF2F7]"
-                }`}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${selectedStatus === tab.id ? "bg-blue-800 text-white" : "bg-slate-50 text-slate-600 hover:bg-slate-100"}`}
               >
-                <span>{tab.label}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedStatus === tab.id ? "bg-white/20 text-white" : "bg-[#E2E8F0] text-[#4A5568]"}`}>
-                  {tab.count}
-                </span>
+                {tab.label}<span className={`rounded-full px-1.5 py-0.5 text-[9px] ${selectedStatus === tab.id ? "bg-white/20" : "bg-slate-200"}`}>{statusCount(tab.id)}</span>
               </button>
             ))}
           </div>
 
-          {/* Secondary Dropdown Filters */}
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedProvince}
-              onChange={(e) => {
-                setSelectedProvince(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-lg px-2.5 py-1.5 focus:outline-none"
-            >
-              <option value="ALL">เลือกจังหวัด (ทั้งหมด)</option>
-              {provinceList.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
+          <div className="grid gap-2 sm:grid-cols-3">
+            <select value={selectedElectionType} onChange={(event) => { setSelectedElectionType(event.target.value); setCurrentPage(1); }} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs outline-none">
+              <option value="ALL">ประเภทการเลือกตั้งทั้งหมด</option>
+              {ELECTION_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
-
-            <select
-              value={selectedMission}
-              onChange={(e) => {
-                setSelectedMission(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-lg px-2.5 py-1.5 focus:outline-none"
-            >
-              <option value="ALL">กลุ่มภารกิจ (ทั้งหมด)</option>
-              <option value="สืบสวนและไต่สวน">สืบสวนและไต่สวน</option>
-              <option value="พรรคการเมือง">พรรคการเมือง</option>
-              <option value="การจัดการเลือกตั้ง">การจัดการเลือกตั้ง</option>
-              <option value="บริหารทั่วไป">บริหารทั่วไป</option>
-              <option value="กระบวนการยุติธรรม">กระบวนการยุติธรรม</option>
+            <select value={selectedProvince} onChange={(event) => { setSelectedProvince(event.target.value); setCurrentPage(1); }} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs outline-none">
+              <option value="ALL">ทุกจังหวัด</option>
+              {provinceList.map((province) => <option key={province} value={province}>{province}</option>)}
+            </select>
+            <select value={selectedMission} onChange={(event) => { setSelectedMission(event.target.value); setCurrentPage(1); }} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs outline-none">
+              <option value="ALL">ทุกกลุ่มภารกิจ</option>
+              {MISSION_GROUP_OPTIONS.map((mission) => <option key={mission} value={mission}>{mission}</option>)}
             </select>
           </div>
+        </div>
+      </section>
 
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+        <div className="flex flex-col gap-2 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-slate-950">รายการเรื่องร้องเรียน</h2>
+            <p className="mt-1 text-[10px] text-slate-500">ข้อมูลหลักจากชุด POC เดียวกับ Dashboard, SLA และรายละเอียดสำนวน</p>
+          </div>
+          <div className="text-[10px] text-slate-500">พบ <strong className="text-slate-900">{filteredCases.length}</strong> จาก {cases.length} เรื่อง</div>
         </div>
 
-      </div>
+        <div className="divide-y divide-slate-100 md:hidden">
+          {paginatedCases.length === 0 ? <div className="py-14 text-center text-xs text-slate-400">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</div> : paginatedCases.map((caseItem) => (
+            <button key={caseItem.id} type="button" onClick={() => onSelectCase(caseItem)} className="w-full p-4 text-left transition hover:bg-blue-50/40">
+              <div className="flex items-start justify-between gap-3"><div><div className="font-bold text-[#1B3F8B]">{caseItem.caseNumber}</div><div className="mt-1 text-[10px] text-slate-500">{getCaseKind(caseItem)} · {caseItem.electionType} · รับเมื่อ {formatThaiDate(caseItem.receivedDate)}</div></div><SlaBadge caseItem={caseItem} /></div>
+              <div className="mt-3 text-xs font-semibold text-slate-800">{caseItem.allegation}</div>
+              <div className="mt-2 line-clamp-1 text-[10px] text-slate-500">ผู้ร้อง: {caseItem.complainants}</div>
+              <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-[10px]"><span className="text-slate-500">{caseItem.province} · {caseItem.currentStage}</span><span className="font-bold text-[#1B3F8B]">ดูรายละเอียด</span></div>
+            </button>
+          ))}
+        </div>
 
-      {/* Main Cases Table */}
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#F7FAFC] text-[#4A5568] border-b border-[#E2E8F0] font-medium">
+        <div className="hidden overflow-x-auto md:block">
+          <table className="w-full min-w-[1180px] text-left text-xs">
+            <thead className="sticky top-0 bg-slate-50 text-[10px] font-bold text-slate-600">
               <tr>
-                <th className="py-3.5 px-4 font-semibold">เลขที่เรื่องร้องเรียน</th>
-                <th className="py-3.5 px-3 font-semibold">วันที่รับเรื่อง</th>
-                <th className="py-3.5 px-3 font-semibold">พื้นที่ / เขตเลือกตั้ง</th>
-                <th className="py-3.5 px-3 font-semibold">ข้อกล่าวหา</th>
-                <th className="py-3.5 px-3 font-semibold">ผู้ร้อง / ผู้ถูกร้อง</th>
-                <th className="py-3.5 px-3 font-semibold">ขั้นตอน Workflow ปัจจุบัน</th>
-                <th className="py-3.5 px-3 font-semibold text-center">สถานะ SLA</th>
-                <th className="py-3.5 px-4 font-semibold text-center">การจัดการ</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">เลขที่เรื่อง / ประเภท</th>
+                <th className="border-b border-slate-200 px-4 py-3.5">ผู้ร้อง</th>
+                <th className="border-b border-slate-200 px-4 py-3.5">ข้อกล่าวหา</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">พื้นที่</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">วันที่รับเรื่อง</th>
+                <th className="border-b border-slate-200 px-4 py-3.5">ขั้นตอน / SLA</th>
+                <th className="border-b border-slate-200 px-4 py-3.5">ผู้รับผิดชอบ</th>
+                <th className="border-b border-slate-200 px-4 py-3.5 text-center">จัดการ</th>
               </tr>
             </thead>
-
-            <tbody className="divide-y divide-[#EDF2F7]">
+            <tbody className="divide-y divide-slate-100">
               {paginatedCases.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-[#A0AEC0]">
-                    ไม่พบข้อมูลเรื่องร้องเรียนที่ตรงกับเงื่อนไขการค้นหา
-                  </td>
+                <tr><td colSpan={8} className="py-14 text-center text-slate-400">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</td></tr>
+              ) : paginatedCases.map((caseItem) => (
+                <tr key={caseItem.id} onClick={() => onSelectCase(caseItem)} className="cursor-pointer align-top transition hover:bg-blue-50/40">
+                  <td className="px-4 py-4"><div className="font-bold text-[#1B3F8B]">{caseItem.caseNumber}</div><div className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-500"><span className="rounded bg-slate-100 px-1.5 py-0.5 font-semibold">{getCaseKind(caseItem)}</span><span>{caseItem.electionType}</span></div></td>
+                  <td className="max-w-52 px-4 py-4"><div className="line-clamp-2 leading-5 text-slate-700">{caseItem.complainants}</div><div className="mt-1 text-[9px] text-slate-400">ผู้ถูกร้อง: {caseItem.respondent}</div></td>
+                  <td className="max-w-48 px-4 py-4"><div className="font-semibold leading-5 text-slate-800">{caseItem.allegation}</div><div className="mt-1 text-[9px] text-slate-400">{caseItem.missionGroup}</div></td>
+                  <td className="whitespace-nowrap px-4 py-4"><div className="font-medium text-slate-800">{caseItem.province}</div><div className="mt-1 text-[10px] text-slate-400">{caseItem.district} · {caseItem.constituency}</div></td>
+                  <td className="whitespace-nowrap px-4 py-4 text-slate-600">{formatThaiDate(caseItem.receivedDate)}</td>
+                  <td className="max-w-56 px-4 py-4"><div className="font-medium leading-5 text-slate-800">{caseItem.currentStage}</div><SlaBadge caseItem={caseItem} /></td>
+                  <td className="max-w-44 px-4 py-4"><div className="text-slate-700">{caseItem.officer}</div><div className="mt-1 text-[9px] text-slate-400">{caseItem.currentSection}</div></td>
+                  <td className="px-4 py-4 text-center"><button type="button" onClick={(event) => { event.stopPropagation(); onSelectCase(caseItem); }} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-[#1B3F8B] transition hover:border-[#1B3F8B] hover:bg-blue-50" aria-label={`เปิดเรื่อง ${caseItem.caseNumber}`}><Eye className="h-4 w-4" /></button></td>
                 </tr>
-              ) : (
-                paginatedCases.map((c) => (
-                  <tr
-                    key={c.id}
-                    onClick={() => onSelectCase(c)}
-                    className="hover:bg-[#F7FAFC] transition-colors cursor-pointer group"
-                  >
-                    {/* Case Number & Type */}
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-[#0B1E36] group-hover:text-[#1E4E8C] transition-colors">
-                        {c.caseNumber}
-                      </div>
-                      <div className="text-[10px] text-[#718096] flex items-center gap-1 mt-0.5">
-                        <span className="px-1.5 py-0.2 rounded bg-[#EDF2F7] text-[#4A5568]">{c.electionType}</span>
-                        <span>·</span>
-                        <span>{c.missionGroup}</span>
-                      </div>
-                    </td>
-
-                    {/* Received Date */}
-                    <td className="py-3.5 px-3 text-[#4A5568]">
-                      {c.receivedDate}
-                    </td>
-
-                    {/* Province / Constituency */}
-                    <td className="py-3.5 px-3">
-                      <div className="font-medium text-[#2D3748]">จ.{c.province}</div>
-                      <div className="text-[11px] text-[#718096]">{c.constituency} ({c.district})</div>
-                    </td>
-
-                    {/* Allegation */}
-                    <td className="py-3.5 px-3 max-w-[200px]">
-                      <div className="font-medium text-[#1A202C] truncate" title={c.allegation}>
-                        {c.allegation}
-                      </div>
-                      <div className="text-[10px] text-[#718096] truncate" title={c.details}>
-                        {c.details}
-                      </div>
-                    </td>
-
-                    {/* Complainant & Respondent */}
-                    <td className="py-3.5 px-3 max-w-[180px]">
-                      <div className="text-[#2D3748] truncate" title={c.complainants}>
-                        <strong className="text-[10px] text-[#718096]">ผู้ร้อง:</strong> {c.complainants}
-                      </div>
-                      <div className="text-[#2D3748] truncate" title={c.respondent}>
-                        <strong className="text-[10px] text-[#718096]">ผู้ถูกร้อง:</strong> {c.respondent}
-                      </div>
-                    </td>
-
-                    {/* Current Stage */}
-                    <td className="py-3.5 px-3">
-                      <div className="text-[11px] font-medium text-[#1E4E8C] line-clamp-1">
-                        {c.currentStage}
-                      </div>
-                      <div className="text-[10px] text-[#718096]">{c.currentSection}</div>
-                    </td>
-
-                    {/* SLA Status Pill */}
-                    <td className="py-3.5 px-3 text-center">
-                      <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                          c.slaStatus === "OVERDUE"
-                            ? "bg-red-100 text-red-700 border border-red-200"
-                            : c.slaStatus === "NEAR_DUE"
-                            ? "bg-amber-100 text-amber-800 border border-amber-200"
-                            : c.slaStatus === "COMPLETED"
-                            ? "bg-slate-100 text-slate-700 border border-slate-200"
-                            : "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                        }`}
-                      >
-                        {c.slaStatus === "OVERDUE" && `เกิน ${Math.abs(c.remainingDays)} วัน`}
-                        {c.slaStatus === "NEAR_DUE" && `เหลือ ${c.remainingDays} วัน`}
-                        {c.slaStatus === "NORMAL" && `เหลือ ${c.remainingDays} วัน`}
-                        {c.slaStatus === "COMPLETED" && "เสร็จสิ้น"}
-                      </span>
-                    </td>
-
-                    {/* View Button */}
-                    <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectCase(c);
-                        }}
-                        className="p-1.5 rounded-lg bg-[#EBF8FF] text-[#1E4E8C] hover:bg-[#1E4E8C] hover:text-white transition-colors"
-                        title="เปิดสำนวนอิเล็กทรอนิกส์"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                    </td>
-
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination Bar */}
-        <div className="p-4 border-t border-[#E2E8F0] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#718096]">
-          <div>
-            แสดงผล <span className="font-semibold text-[#1A202C]">{(currentPage - 1) * itemsPerPage + 1}</span> ถึง{" "}
-            <span className="font-semibold text-[#1A202C]">{Math.min(currentPage * itemsPerPage, filteredCases.length)}</span> จากทั้งหมด{" "}
-            <span className="font-semibold text-[#1A202C]">{filteredCases.length}</span> รายการ
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="p-1.5 rounded-lg border border-[#E2E8F0] bg-white hover:bg-[#F7FAFC] disabled:opacity-40 disabled:pointer-events-none"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="px-3 py-1 bg-[#F7FAFC] rounded-lg border border-[#E2E8F0] font-medium text-[#1A202C]">
-              หน้า {currentPage} / {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="p-1.5 rounded-lg border border-[#E2E8F0] bg-white hover:bg-[#F7FAFC] disabled:opacity-40 disabled:pointer-events-none"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+        <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-200 p-4 text-xs text-slate-500 sm:flex-row">
+          <div>แสดง <strong className="text-slate-900">{filteredCases.length ? pageStart + 1 : 0}</strong> ถึง <strong className="text-slate-900">{Math.min(pageStart + itemsPerPage, filteredCases.length)}</strong> จาก <strong className="text-slate-900">{filteredCases.length}</strong> รายการ</div>
+          <div className="flex items-center gap-1.5"><button type="button" onClick={() => setCurrentPage((page) => Math.max(1, Math.min(page, totalPages) - 1))} disabled={effectivePage === 1} className="rounded-lg border border-slate-200 p-1.5 disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></button><span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-semibold text-slate-800">หน้า {effectivePage} / {totalPages}</span><button type="button" onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} disabled={effectivePage === totalPages} className="rounded-lg border border-slate-200 p-1.5 disabled:opacity-40"><ChevronRight className="h-4 w-4" /></button></div>
         </div>
-
-      </div>
-
+      </section>
     </div>
   );
+}
+
+function SlaBadge({ caseItem }: { caseItem: ComplaintItem }) {
+  const config = caseItem.slaStatus === "OVERDUE"
+    ? { className: "bg-rose-100 text-rose-700" }
+    : caseItem.slaStatus === "NEAR_DUE"
+      ? { className: "bg-amber-100 text-amber-800" }
+      : caseItem.slaStatus === "COMPLETED"
+        ? { className: "bg-slate-100 text-slate-700" }
+        : { className: "bg-emerald-100 text-emerald-800" };
+
+  return <span className={`mt-2 inline-flex rounded-full px-2 py-1 text-[9px] font-bold ${config.className}`}>{getSlaLabel(caseItem)}</span>;
 }

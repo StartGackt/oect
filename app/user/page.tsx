@@ -1,776 +1,686 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { 
-  FileText, 
-  Database, 
-  Layers, 
-  Cpu, 
-  BarChart3, 
-  Settings, 
-  Search, 
-  Plus, 
-  UploadCloud, 
-  Download, 
-  Pencil, 
-  RefreshCw, 
-  Trash2, 
-  CheckCircle2, 
-  Clock, 
-  ShieldCheck, 
-  Bell, 
-  ChevronDown, 
-  MessageSquare, 
-  Eye, 
-  ExternalLink,
-  Users,
-  Sliders,
-  Check,
-  Lock,
+import {
+  BarChart3,
+  Bell,
+  ChevronRight,
+  ClipboardCheck,
+  Clock3,
+  Database,
+  FileCheck2,
+  FilePlus2,
+  FileText,
+  History,
+  Layers3,
+  LockKeyhole,
   LogOut,
-  Sparkles,
-  ArrowRight,
-  Filter,
-  Scale,
-  Building2,
-  Calendar
+  Menu,
+  MessageSquareText,
+  Plus,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  UploadCloud,
+  UserRound,
+  X,
 } from "lucide-react";
 import initialCasesData from "@/data/complaintsData.json";
 import CaseDetailModal from "@/components/oect/CaseDetailModal";
-import NewComplaintForm from "@/components/oect/NewComplaintForm";
-import CitizenTrackingView from "@/components/oect/CitizenTrackingView";
+import CaseListView from "@/components/oect/CaseListView";
+import CitizenServiceView, { type CitizenTab } from "@/components/oect/CitizenServiceView";
 import DashboardView from "@/components/oect/DashboardView";
+import GovernanceCenterView from "@/components/oect/GovernanceCenterView";
+import NewComplaintForm from "@/components/oect/NewComplaintForm";
+import RoleWorkspaceView, { OFFICER_ROLES } from "@/components/oect/RoleWorkspaceView";
+import SlaMonitoringView from "@/components/oect/SlaMonitoringView";
 import WorkflowVisualizer from "@/components/oect/WorkflowVisualizer";
+import { CURRENT_CITIZEN, type ComplaintItem } from "@/components/oect/complaintDomain";
+
+type PortalView = "dashboard" | "workspace" | "cases" | "workflow" | "sla" | "citizen" | "governance" | "integrations";
+
+const NAV_ITEMS = [
+  {
+    id: "dashboard" as const,
+    label: "ภาพรวมและ SLA",
+    description: "สถานการณ์ทั่วประเทศและงานเร่งด่วน",
+    icon: BarChart3,
+  },
+  {
+    id: "workspace" as const,
+    label: "คิวงานตามบทบาท",
+    description: "ตรวจ สั่งการ สืบสวน และวินิจฉัย",
+    icon: ClipboardCheck,
+  },
+  {
+    id: "cases" as const,
+    label: "เรื่องร้องเรียน",
+    description: "รับเรื่อง ค้นหา และเปิดสำนวน",
+    icon: FileText,
+  },
+  {
+    id: "workflow" as const,
+    label: "Workflow กระบวนงาน",
+    description: "ขั้นตอน ระยะเวลา และจุดวินิจฉัย",
+    icon: Layers3,
+  },
+  {
+    id: "sla" as const,
+    label: "ติดตามกำหนดเวลา",
+    description: "ตัวจับเวลาทุกเคสและการแจ้งเตือน",
+    icon: Clock3,
+  },
+  {
+    id: "citizen" as const,
+    label: "บริการผู้ร้อง",
+    description: "ยื่น ติดตาม แก้ไข และรับผล",
+    icon: MessageSquareText,
+  },
+  {
+    id: "governance" as const,
+    label: "รายงานและกำกับระบบ",
+    description: "Reports, Audit Log, User และ Role",
+    icon: ShieldCheck,
+  },
+  {
+    id: "integrations" as const,
+    label: "ระบบเชื่อมโยง",
+    description: "DXC, e-Saraban และ PRAXTICOL",
+    icon: Database,
+  },
+];
+
+const CITIZEN_NAV_ITEMS = [
+  {
+    id: "overview" as const,
+    label: "หน้าหลัก",
+    description: "ภาพรวมคำร้องของฉัน",
+    icon: ShieldCheck,
+  },
+  {
+    id: "new" as const,
+    label: "ยื่นคำร้องใหม่",
+    description: "กรอกคำร้องและแนบหลักฐาน",
+    icon: FilePlus2,
+  },
+  {
+    id: "tracking" as const,
+    label: "ติดตามสถานะ",
+    description: "ดู Timeline การดำเนินการ",
+    icon: Clock3,
+  },
+  {
+    id: "correction" as const,
+    label: "แก้ไขคำร้อง",
+    description: "ส่งข้อมูลหรือเอกสารเพิ่มเติม",
+    icon: UploadCloud,
+  },
+  {
+    id: "result" as const,
+    label: "ผลการพิจารณา",
+    description: "ดูและดาวน์โหลดผล",
+    icon: FileCheck2,
+  },
+  {
+    id: "history" as const,
+    label: "ประวัติของฉัน",
+    description: "คำร้องที่เคยยื่นทั้งหมด",
+    icon: History,
+  },
+  {
+    id: "profile" as const,
+    label: "โปรไฟล์",
+    description: "ข้อมูลส่วนตัวและการแจ้งเตือน",
+    icon: UserRound,
+  },
+];
+
+const PAGE_META: Record<PortalView, { eyebrow: string; title: string; description: string }> = {
+  dashboard: {
+    eyebrow: "ศูนย์บัญชาการเรื่องร้องเรียน",
+    title: "ภาพรวมสถานการณ์และกรอบเวลา SLA",
+    description: "เห็นเรื่องที่ต้องตัดสินใจ เรื่องที่เสี่ยงเกินกำหนด และภาระงานทุกพื้นที่ในหน้าเดียว",
+  },
+  workspace: {
+    eyebrow: "Role-based officer workspace",
+    title: "คิวงานและการดำเนินการตามบทบาท",
+    description: "แสดงงาน ตัวจับเวลา และคำสั่งที่ผู้ใช้งานปัจจุบันมีสิทธิ์ดำเนินการ พร้อมส่งต่อไปยังลำดับถัดไป",
+  },
+  cases: {
+    eyebrow: "ทะเบียนเรื่องร้องเรียน",
+    title: "ค้นหาและบริหารสำนวน",
+    description: "รับเรื่อง ตรวจสอบ มอบหมาย และติดตามสำนวนตั้งแต่จังหวัดถึงส่วนกลาง",
+  },
+  workflow: {
+    eyebrow: "กระบวนการร้องคัดค้านการเลือกตั้ง",
+    title: "Workflow และจุดควบคุม SLA",
+    description: "ติดตามลำดับงาน ผู้รับผิดชอบ และกรอบเวลาตามระเบียบ กกต. อย่างเป็นระบบ",
+  },
+  sla: {
+    eyebrow: "SLA Monitoring & Escalation",
+    title: "ติดตามกรอบเวลาทุกขั้นตอน",
+    description: "รวมคำร้องและสำนวนที่ใกล้ครบหรือเกินกำหนด เพื่อแจ้งเตือนผู้รับผิดชอบและผู้บังคับบัญชา",
+  },
+  citizen: {
+    eyebrow: "บริการผู้ร้องเรียน",
+    title: "ยื่นคำร้อง ติดตาม แก้ไข และรับผล",
+    description: "บริการครบวงจรสำหรับผู้ร้อง โดยแสดงเฉพาะข้อมูลที่เปิดเผยได้และปกปิดความเห็นภายในตาม PDPA",
+  },
+  governance: {
+    eyebrow: "Governance, Audit & Reporting",
+    title: "รายงาน ประวัติการดำเนินการ และสิทธิ์ผู้ใช้",
+    description: "ตรวจสอบย้อนหลัง ส่งออกรายงาน และกำกับสิทธิ์ตามบทบาท หน่วยงาน และพื้นที่รับผิดชอบ",
+  },
+  integrations: {
+    eyebrow: "Government Data Exchange",
+    title: "สถานะระบบเชื่อมโยงภายนอก",
+    description: "ตรวจสุขภาพการเชื่อมต่อทะเบียนราษฎร สารบรรณ และข้อมูลการเลือกตั้ง",
+  },
+};
+
+const INTEGRATIONS = [
+  {
+    name: "ฐานข้อมูลทะเบียนราษฎร",
+    shortName: "DXC / Linkage Center",
+    description: "ตรวจสอบตัวตนและข้อมูลที่อยู่ของผู้ร้อง/ผู้ถูกร้อง",
+    latency: "128 ms",
+  },
+  {
+    name: "ระบบสารบรรณอิเล็กทรอนิกส์",
+    shortName: "e-Saraban",
+    description: "รับ-ส่งหนังสือและเลขสารบรรณระหว่างจังหวัดกับส่วนกลาง",
+    latency: "214 ms",
+  },
+  {
+    name: "ระบบข้อมูลการเลือกตั้ง",
+    shortName: "PRAXTICOL",
+    description: "อ้างอิงเขตเลือกตั้ง ผู้สมัคร และผลการเลือกตั้ง",
+    latency: "176 ms",
+  },
+];
 
 export default function UserPortalPage() {
-  const [cases, setCases] = useState(initialCasesData);
-  const [activeSidebarMenu, setActiveSidebarMenu] = useState<string>("cases");
-  const [activeTab, setActiveTab] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedMission, setSelectedMission] = useState<string>("ALL");
-  const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
-  const [selectedProvince, setSelectedProvince] = useState<string>("ALL");
-  const [selectedPrivacy, setSelectedPrivacy] = useState<string>("ALL");
-  
-  const [selectedCase, setSelectedCase] = useState<any | null>(null);
-  const [isNewModalOpen, setIsNewModalOpen] = useState<boolean>(false);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [cases, setCases] = useState<ComplaintItem[]>(initialCasesData as ComplaintItem[]);
+  const [activeView, setActiveView] = useState<PortalView>("citizen");
+  const [selectedCase, setSelectedCase] = useState<ComplaintItem | null>(null);
+  const [selectedCaseReadOnly, setSelectedCaseReadOnly] = useState(false);
+  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [isCitizenFormOpen, setIsCitizenFormOpen] = useState(false);
+  const [citizenTab, setCitizenTab] = useState<CitizenTab>("overview");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedRoleId, setSelectedRoleId] = useState<string>("intake");
+  const [caseStatusFilter, setCaseStatusFilter] = useState<string>("ALL");
+  const [isCitizenPortal, setIsCitizenPortal] = useState(true);
 
-  // Statistics
-  const totalCases = cases.length;
-  const normalCases = cases.filter((c) => c.slaStatus === "NORMAL").length;
-  const nearDueCases = cases.filter((c) => c.slaStatus === "NEAR_DUE").length;
-  const overdueCases = cases.filter((c) => c.slaStatus === "OVERDUE").length;
-  const completedCases = cases.filter((c) => c.slaStatus === "COMPLETED").length;
+  const currentMeta = PAGE_META[activeView];
+  const selectedRole = OFFICER_ROLES.find((role) => role.id === selectedRoleId) ?? OFFICER_ROLES[0];
+  const urgentCount = useMemo(
+    () => cases.filter((item) => item.slaStatus === "OVERDUE" || item.slaStatus === "NEAR_DUE").length,
+    [cases],
+  );
+  const citizenCases = useMemo(() => cases.filter((item) => item.complainants.includes(CURRENT_CITIZEN.name)), [cases]);
+  const citizenActionCount = citizenCases.filter((item) => item.slaStatus === "NEAR_DUE" || item.slaStatus === "OVERDUE").length;
+  const notificationCount = isCitizenPortal ? citizenActionCount : urgentCount;
 
-  // Filtered dataset
-  const filteredCases = useMemo(() => {
-    return cases.filter((c) => {
-      // Search
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const match =
-          c.caseNumber.toLowerCase().includes(q) ||
-          c.allegation.toLowerCase().includes(q) ||
-          c.complainants.toLowerCase().includes(q) ||
-          c.respondent.toLowerCase().includes(q) ||
-          c.province.toLowerCase().includes(q) ||
-          c.district.toLowerCase().includes(q) ||
-          c.officer.toLowerCase().includes(q);
-        if (!match) return false;
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const parameters = new URLSearchParams(window.location.search);
+      const requestedView = parameters.get("view");
+      const requestedRole = parameters.get("role");
+      if (requestedView === "citizen") {
+        setIsCitizenPortal(true);
+        setActiveView("citizen");
+        setCitizenTab("overview");
+        setIsCitizenFormOpen(false);
       }
+      if (requestedRole && OFFICER_ROLES.some((role) => role.id === requestedRole)) {
+        setIsCitizenPortal(false);
+        setSelectedRoleId(requestedRole);
+        setActiveView(requestedRole === "intake" ? "dashboard" : "workspace");
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
-      // Tab filter
-      if (activeTab === "pending" && c.stageId > 2 && c.slaStatus === "COMPLETED") return false;
-      if (activeTab === "overdue" && c.slaStatus !== "OVERDUE") return false;
-      if (activeTab === "completed" && c.slaStatus !== "COMPLETED") return false;
-
-      // Dropdown filters
-      if (selectedMission !== "ALL" && c.missionGroup !== selectedMission) return false;
-      if (selectedStatus !== "ALL" && c.slaStatus !== selectedStatus) return false;
-      if (selectedProvince !== "ALL" && c.province !== selectedProvince) return false;
-
-      return true;
-    });
-  }, [cases, searchQuery, activeTab, selectedMission, selectedStatus, selectedProvince]);
-
-  const handleAddCase = (newCase: any) => {
-    setCases([newCase, ...cases]);
+  const selectView = (view: PortalView) => {
+    setActiveView(view);
+    if (view === "citizen") setIsCitizenFormOpen(false);
+    setIsMobileMenuOpen(false);
   };
 
-  const handleTriggerSync = () => {
+  const selectCitizenTab = (tab: CitizenTab) => {
+    setActiveView("citizen");
+    setCitizenTab(tab);
+    setIsCitizenFormOpen(tab === "new");
+    setIsMobileMenuOpen(false);
+  };
+
+  const syncIntegrations = () => {
     setIsSyncing(true);
-    setSyncMessage(null);
-    setTimeout(() => {
-      setIsSyncing(false);
-      setSyncMessage("เชื่อมต่อฐานข้อมูลทะเบียนราษฎร (DXC) และระบบ PRAXTICOL เรียบร้อยแล้ว");
-      setTimeout(() => setSyncMessage(null), 4000);
-    }, 1000);
+    window.setTimeout(() => setIsSyncing(false), 900);
+  };
+
+  const openCase = (caseItem: ComplaintItem, readOnly = false) => {
+    setSelectedCase(caseItem);
+    setSelectedCaseReadOnly(readOnly);
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col font-kanit selection:bg-[#0D9488] selection:text-white">
-      
-      {/* 1. TOP NAVBAR (EXACT STYLE FROM SCREENSHOT) */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-2xs px-4 sm:px-6 py-2.5">
-        <div className="flex items-center justify-between gap-4">
-          
-          {/* Left: Brand Identity */}
-          <div className="flex items-center gap-6">
-            <Link href="/user" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 relative flex-shrink-0 bg-white rounded-lg p-0.5 border border-amber-400">
-                <Image
-                  src="/oect-logo.png"
-                  alt="สนง.กกต."
-                  fill
-                  className="object-contain"
-                  priority
-                />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-sm text-[#0F172A] tracking-tight">OECT ECT-CMS</span>
-                <span className="text-[10px] text-slate-400 uppercase font-semibold">OFFICER PORTAL</span>
-              </div>
-            </Link>
-
-            {/* Navigation Switcher Pills */}
-            <div className="hidden sm:flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold text-[#0D9488] bg-[#F0FDFA] border border-[#0D9488]/40 shadow-2xs">
-                <MessageSquare className="w-3.5 h-3.5 text-[#0D9488]" />
-                <span>Chatbot & User Portal</span>
-              </div>
-
-              <Link
-                href="/admin"
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                <Sliders className="w-3.5 h-3.5 text-slate-500" />
-                <span>Admin Console</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* Right: Notifications, User Profile Avatar, Logout */}
-          <div className="flex items-center gap-3">
-            
-            {/* Notification Bell */}
-            <button className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl relative transition-colors">
-              <Bell className="w-4 h-4" />
-              <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-1.5 right-1.5" />
+    <div className="min-h-screen bg-slate-50 text-slate-950">
+      <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-white/95 backdrop-blur-xl">
+        <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 lg:hidden"
+              aria-label="เปิดเมนูหลัก"
+            >
+              <Menu className="h-5 w-5" />
             </button>
 
-            {/* Officer Avatar & Role */}
-            <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-full bg-[#173B6B] text-white flex items-center justify-center text-xs font-bold shadow-xs">
-                WK
-              </div>
-              <div className="text-left hidden md:block">
-                <div className="text-xs font-bold text-slate-900 leading-tight">วรากร (พนักงานสืบสวน)</div>
-                <div className="text-[10px] text-slate-400 leading-tight">สนง.กกต.จว. เชียงใหม่</div>
-              </div>
-            </div>
-
-            {/* Logout Button */}
-            <Link
-              href="/login"
-              className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1"
-              title="ออกจากระบบ"
-            >
-              <LogOut className="w-4 h-4" />
+            <Link href={isCitizenPortal ? "/user?view=citizen" : `/user?role=${selectedRoleId}`} className="flex min-w-0 items-center gap-3">
+              <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-amber-300 bg-white p-1 shadow-sm">
+                <Image
+                  src="/oect-logo.png"
+                  alt="ตราสัญลักษณ์สำนักงานคณะกรรมการการเลือกตั้ง"
+                  fill
+                  sizes="40px"
+                  className="object-contain p-1"
+                  priority
+                />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-bold tracking-tight text-slate-950">
+                  ECT Complaint Management
+                </span>
+                <span className="hidden truncate text-[11px] text-slate-500 sm:block">
+                  ระบบบริหารจัดการเรื่องร้องเรียน สนง.กกต.
+                </span>
+              </span>
             </Link>
-
           </div>
 
+          {!isCitizenPortal && <div className="hidden w-full max-w-md items-center lg:flex">
+            <Search className="pointer-events-none relative left-9 h-4 w-4 text-slate-400" />
+            <input
+              value={globalSearch}
+              onChange={(event) => setGlobalSearch(event.target.value)}
+              onFocus={() => setActiveView("cases")}
+              placeholder="ค้นหาเลขเรื่อง ผู้ร้อง ข้อกล่าวหา หรือจังหวัด"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-xs outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+              aria-label="ค้นหาเรื่องร้องเรียน"
+            />
+          </div>}
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+              aria-label={`การแจ้งเตือน ${notificationCount} รายการ`}
+            >
+              <Bell className="h-4 w-4" />
+              {notificationCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                  {notificationCount > 99 ? "99+" : notificationCount}
+                </span>
+              )}
+            </button>
+
+            <div className="hidden items-center gap-2 border-l border-slate-200 pl-3 sm:flex">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1B3F8B] text-xs font-bold text-white">{isCitizenPortal ? CURRENT_CITIZEN.initials : "WK"}</span>
+                <span className="hidden xl:block">
+                  <span className="block text-xs font-semibold text-slate-900">{isCitizenPortal ? CURRENT_CITIZEN.shortName : "วรากร กรณีศึกษา"}</span>
+                  <span className="block max-w-44 truncate text-[10px] text-slate-500">{isCitizenPortal ? "ผู้ร้องเรียน · ยืนยัน ThaID แล้ว" : `${selectedRole.label} · เชียงใหม่`}</span>
+                </span>
+            </div>
+
+            <Link
+              href="/login"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+              aria-label="ออกจากระบบ"
+            >
+              <LogOut className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
       </header>
 
-      {/* 2. MAIN LAYOUT WITH LEFT SIDEBAR + MAIN CONTENT AREA */}
-      <div className="flex-1 flex overflow-hidden">
-        
-        {/* LEFT SIDEBAR (EXACT STYLE FROM SCREENSHOT) */}
-        <aside className="w-64 sm:w-72 bg-white border-r border-slate-200 flex flex-col justify-between p-4 flex-shrink-0 min-h-[calc(100vh-57px)]">
-          
-          <div className="space-y-4">
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2">
-              เมนูการจัดการ
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="absolute inset-0 bg-[#1B3F8B]/45 backdrop-blur-sm"
+            aria-label="ปิดเมนูหลัก"
+          />
+          <aside className="relative flex h-full w-[86%] max-w-sm flex-col bg-white p-5 shadow-2xl">
+            <div className="mb-7 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-bold text-slate-950">{isCitizenPortal ? "บริการผู้ร้องเรียน" : "เมนูระบบงาน"}</div>
+                <div className="text-[11px] text-slate-500">{isCitizenPortal ? "ECT-CMS Citizen Portal" : "ECT-CMS Officer Portal"}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600"
+                aria-label="ปิดเมนู"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
+            <PortalNavigation
+              activeView={activeView}
+              onSelect={selectView}
+              citizenOnly={isCitizenPortal}
+              roleId={selectedRoleId}
+              citizenTab={citizenTab}
+              citizenFormOpen={isCitizenFormOpen}
+              citizenActionCount={citizenActionCount}
+              onCitizenTabChange={selectCitizenTab}
+            />
+          </aside>
+        </div>
+      )}
 
-            <nav className="space-y-1.5">
-              
-              {/* Menu Item 1: Case Management */}
-              <button
-                onClick={() => setActiveSidebarMenu("cases")}
-                className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group ${
-                  activeSidebarMenu === "cases"
-                    ? "bg-[#EBF5FF] border border-blue-200/80 shadow-2xs"
-                    : "hover:bg-slate-50 border border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    activeSidebarMenu === "cases" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
-                  }`}>
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 leading-snug">
-                      จัดการเอกสารและความรู้
-                    </div>
-                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                      นำเข้า Versioning, Workflow และ OCR
-                    </div>
-                  </div>
+      <div className="mx-auto flex min-h-[calc(100vh-65px)] max-w-[1680px]">
+        <aside className="hidden w-72 shrink-0 border-r border-slate-200 bg-white px-4 py-5 lg:sticky lg:top-16 lg:flex lg:h-[calc(100vh-64px)] lg:flex-col lg:overflow-y-auto">
+          <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">{isCitizenPortal ? "เมนูบริการผู้ร้อง" : "ระบบงานหลัก"}</div>
+          <PortalNavigation
+            activeView={activeView}
+            onSelect={selectView}
+            citizenOnly={isCitizenPortal}
+            roleId={selectedRoleId}
+            citizenTab={citizenTab}
+            citizenFormOpen={isCitizenFormOpen}
+            citizenActionCount={citizenActionCount}
+            onCitizenTabChange={selectCitizenTab}
+          />
+
+          <div className="mt-auto space-y-3 pt-6">
+            {isCitizenPortal ? (
+              <div className="border-t border-slate-100 px-3 pt-4">
+                <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-500"><ShieldCheck className="h-3.5 w-3.5 text-[#1B3F8B]" /> ยืนยันตัวตนด้วย ThaID แล้ว</div>
+                <div className="mt-1.5 text-[10px] text-slate-400">ช่วยเหลือสายด่วน กกต. 1444</div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5">
+                <div className="flex items-center gap-2 text-xs font-semibold text-emerald-900">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                  ระบบทำงานปกติ
                 </div>
-                {activeSidebarMenu === "cases" && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                )}
-              </button>
-
-              {/* Menu Item 2: External Integrations */}
-              <button
-                onClick={() => setActiveSidebarMenu("integrations")}
-                className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group ${
-                  activeSidebarMenu === "integrations"
-                    ? "bg-[#EBF5FF] border border-blue-200/80 shadow-2xs"
-                    : "hover:bg-slate-50 border border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    activeSidebarMenu === "integrations" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
-                  }`}>
-                    <Database className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 leading-snug">
-                      แหล่งข้อมูลเชื่อมต่อ
-                    </div>
-                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                      DXC, e-Saraban, PRAXTICOL
-                    </div>
-                  </div>
+                <div className="mt-1.5 text-[10px] leading-relaxed text-emerald-700">
+                  เชื่อมต่อ 3 ระบบ · เข้ารหัส TLS 1.3 · PDPA Masking เปิดใช้งาน
                 </div>
-                {activeSidebarMenu === "integrations" && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                )}
-              </button>
-
-              {/* Menu Item 3: Legal Workflow & SLA */}
-              <button
-                onClick={() => setActiveSidebarMenu("workflow")}
-                className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group ${
-                  activeSidebarMenu === "workflow"
-                    ? "bg-[#EBF5FF] border border-blue-200/80 shadow-2xs"
-                    : "hover:bg-slate-50 border border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    activeSidebarMenu === "workflow" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
-                  }`}>
-                    <Layers className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 leading-snug">
-                      ขั้นตอนและกรอบเวลา SLA
-                    </div>
-                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                      10 ขั้นตอนตามระเบียบ กกต.
-                    </div>
-                  </div>
-                </div>
-                {activeSidebarMenu === "workflow" && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                )}
-              </button>
-
-              {/* Menu Item 4: Dashboard & BI */}
-              <button
-                onClick={() => setActiveSidebarMenu("dashboard")}
-                className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group ${
-                  activeSidebarMenu === "dashboard"
-                    ? "bg-[#EBF5FF] border border-blue-200/80 shadow-2xs"
-                    : "hover:bg-slate-50 border border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    activeSidebarMenu === "dashboard" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
-                  }`}>
-                    <BarChart3 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 leading-snug">
-                      สถิติและความปลอดภัย
-                    </div>
-                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                      Dashboard, Top 10 จว., รายงาน
-                    </div>
-                  </div>
-                </div>
-                {activeSidebarMenu === "dashboard" && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                )}
-              </button>
-
-              {/* Menu Item 5: Citizen Tracking */}
-              <button
-                onClick={() => setActiveSidebarMenu("citizen")}
-                className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group ${
-                  activeSidebarMenu === "citizen"
-                    ? "bg-[#EBF5FF] border border-blue-200/80 shadow-2xs"
-                    : "hover:bg-slate-50 border border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    activeSidebarMenu === "citizen" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
-                  }`}>
-                    <MessageSquare className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 leading-snug">
-                      ติดตามสถานะประชาชน
-                    </div>
-                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                      ค้นหาด้วยเลขคดี / ThaID
-                    </div>
-                  </div>
-                </div>
-                {activeSidebarMenu === "citizen" && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                )}
-              </button>
-
-            </nav>
+              </div>
+            )}
+            {!isCitizenPortal && <Link
+              href="/admin"
+              className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <span className="flex items-center gap-2"><LockKeyhole className="h-4 w-4" /> ศูนย์ผู้ดูแลระบบ</span>
+              <ChevronRight className="h-4 w-4" />
+            </Link>}
           </div>
-
-          {/* Bottom Floating Engine Card */}
-          <div className="p-3 bg-white rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-3 mt-4">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 font-bold text-xs">
-              ECT
-            </div>
-            <div>
-              <div className="text-xs font-bold text-slate-900 leading-tight">ECT Case Engine v2.6</div>
-              <div className="text-[10px] text-slate-400">DXC & PRAXTICOL Connected</div>
-            </div>
-          </div>
-
         </aside>
 
-        {/* MAIN CONTENT WORKSPACE AREA */}
-        <main className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6">
-          
-          {/* Breadcrumb & Top Action */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">จัดการเอกสารและความรู้</h2>
-              <div className="text-[11px] text-slate-400">นำเข้า Versioning, Workflow และ OCR</div>
-            </div>
-
-            <button
-              onClick={() => setActiveSidebarMenu("citizen")}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold transition-all shadow-xs"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>ทดสอบ Chatbot AI</span>
-            </button>
-          </div>
-
-          {syncMessage && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>{syncMessage}</span>
-            </div>
-          )}
-
-          {/* LARGE TITLE & ACTION BUTTONS */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                Knowledge Base & Document Management (ระบบบริหารจัดการเอกสารและความรู้)
-              </h1>
-              <p className="text-xs text-slate-500 font-light max-w-3xl leading-relaxed">
-                นำเข้าเอกสาร PDF, Office, รูปภาพ, วิดีโอ ควบคุมการแบ่ง Chunking, จัดการเวอร์ชัน, ตรวจสอบเอกสารซ้ำ, อนุมัติ Workflow และสิทธิ์การเข้าถึง (RBAC)
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2.5 flex-shrink-0">
-              <button
-                onClick={() => alert("ระบบกำลังประมวลผลการนำเข้าข้อมูลแบบ Batch")}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors shadow-2xs"
-              >
-                <Download className="w-3.5 h-3.5 text-slate-500" />
-                <span>Batch Upload</span>
-              </button>
-
-              <button
-                onClick={() => setIsNewModalOpen(true)}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#0D9488] hover:bg-[#0f766e] text-white font-bold text-xs transition-all shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                <span>นำเข้าเอกสารใหม่ (Upload Document)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 4 KPI METRIC STAT CARDS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            {/* Card 1 */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500">เอกสารทั้งหมด</span>
-                <FileText className="w-4 h-4 text-emerald-500" />
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-bold text-slate-900">{totalCases}</div>
-                <div className="text-[11px] font-bold text-emerald-600 mt-1">พร้อมใช้งานในระบบ RAG</div>
+        <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
+          {!isCitizenPortal && <><div className="mb-3 flex items-center gap-2 text-[10px] text-slate-400"><span>ระบบงานเจ้าหน้าที่</span><ChevronRight className="h-3.5 w-3.5" /><span className="font-semibold text-[#1B3F8B]">{currentMeta.title}</span></div><section className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="px-5 py-5 sm:px-6">
+              <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+                <div className="max-w-3xl">
+                  <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#FFD600]" />
+                    {currentMeta.eyebrow}
+                  </div>
+                  <h1 className="text-xl font-bold tracking-tight text-[#1B3F8B] sm:text-2xl">{currentMeta.title}</h1>
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">{currentMeta.description}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {activeView !== "citizen" && (
+                    <label className="relative">
+                      <span className="sr-only">เลือกบทบาทสำหรับพื้นที่ทำงาน</span>
+                      <select
+                        value={selectedRoleId}
+                        onChange={(event) => {
+                          setSelectedRoleId(event.target.value);
+                          setActiveView("workspace");
+                        }}
+                        className="max-w-[260px] appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-3 pr-9 text-xs font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                        aria-label="เลือกหรือสลับบทบาทเจ้าหน้าที่"
+                      >
+                        {OFFICER_ROLES.map((role) => <option key={role.id} value={role.id}>{role.label}</option>)}
+                      </select>
+                      <ChevronRight className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 rotate-90 text-slate-400" />
+                    </label>
+                  )}
+                  {activeView === "dashboard" && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveView("cases")}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      <FileText className="h-4 w-4" /> ดูทะเบียนเรื่อง
+                    </button>
+                  )}
+                  {(activeView === "dashboard" || activeView === "cases") && (
+                    <button
+                      type="button"
+                      onClick={() => setIsNewModalOpen(true)}
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#1B3F8B] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1B3F8B] focus:outline-none focus:ring-4 focus:ring-blue-200"
+                    >
+                      <Plus className="h-4 w-4" /> รับเรื่องร้องเรียนใหม่
+                    </button>
+                  )}
+                  {activeView === "integrations" && (
+                    <button
+                      type="button"
+                      onClick={syncIntegrations}
+                      className="inline-flex items-center gap-2 rounded-xl bg-[#1B3F8B] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1B3F8B]"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+                      {isSyncing ? "กำลังตรวจสอบ" : "ตรวจสอบการเชื่อมต่อ"}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
+          </section></>}
 
-            {/* Card 2 */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500">Vector Chunks</span>
-                <Layers className="w-4 h-4 text-purple-500" />
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-bold text-slate-900">427</div>
-                <div className="text-[11px] font-bold text-purple-600 mt-1">BGE-M3 Multilingual Vector</div>
-              </div>
-            </div>
-
-            {/* Card 3 */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500">รอตรวจสอบ/อนุมัติ</span>
-                <Clock className="w-4 h-4 text-amber-500" />
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-bold text-amber-600">{nearDueCases}</div>
-                <div className="text-[11px] font-bold text-amber-600 mt-1">Workflow Approval Queue</div>
-              </div>
-            </div>
-
-            {/* Card 4 */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500">สแกนความปลอดภัย</span>
-                <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-bold text-emerald-600">100% Clean</div>
-                <div className="text-[11px] font-bold text-emerald-600 mt-1">Antivirus & DLP Verified</div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* VIEW SWITCHER BASED ON SIDEBAR MENU */}
-          {activeSidebarMenu === "dashboard" ? (
+          {activeView === "dashboard" && (
             <DashboardView
               cases={cases}
-              onSelectCase={(c) => setSelectedCase(c)}
-              onViewAllCases={() => setActiveSidebarMenu("cases")}
+              onSelectCase={(caseItem) => openCase(caseItem)}
+              roleId={selectedRoleId}
+              onViewAllCases={() => {
+                setCaseStatusFilter("ALL");
+                setActiveView("cases");
+              }}
+              onFilterStatus={(status) => {
+                setCaseStatusFilter(status);
+                setActiveView("cases");
+              }}
             />
-          ) : activeSidebarMenu === "workflow" ? (
-            <WorkflowVisualizer />
-          ) : activeSidebarMenu === "citizen" ? (
-            <CitizenTrackingView
-              cases={cases}
-              onSelectCase={(c) => setSelectedCase(c)}
-            />
-          ) : (
-            /* DEFAULT VIEW: CASES DIRECTORY TABLE */
-            <>
-              {/* TABS ROW */}
-              <div className="flex items-center gap-3 overflow-x-auto pb-1 text-xs">
-                <button
-                  onClick={() => setActiveTab("all")}
-                  className={`px-4 py-2 rounded-full font-bold transition-all ${
-                    activeTab === "all"
-                      ? "bg-[#E6FFFA] text-[#0D9488] border border-[#0D9488]/30 shadow-2xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  คลังเอกสารทั้งหมด ({totalCases})
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("pending")}
-                  className={`px-4 py-2 rounded-full font-bold transition-all flex items-center gap-1.5 ${
-                    activeTab === "pending"
-                      ? "bg-[#E6FFFA] text-[#0D9488] border border-[#0D9488]/30 shadow-2xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <span>รอการตรวจสอบ/อนุมัติ (Workflow)</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-bold">
-                    {nearDueCases}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("overdue")}
-                  className={`px-4 py-2 rounded-full font-bold transition-all flex items-center gap-1.5 ${
-                    activeTab === "overdue"
-                      ? "bg-[#E6FFFA] text-[#0D9488] border border-[#0D9488]/30 shadow-2xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <span>เกินกำหนดเวลา SLA</span>
-                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
-                    {overdueCases}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("audit")}
-                  className={`px-4 py-2 rounded-full font-bold transition-all ${
-                    activeTab === "audit"
-                      ? "bg-[#E6FFFA] text-[#0D9488] border border-[#0D9488]/30 shadow-2xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  ประวัติและ Audit Logs (3)
-                </button>
-              </div>
-
-              {/* SEARCH & FILTER CONTROLS BAR */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                
-                <div className="lg:col-span-2 relative">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                  <input
-                    type="text"
-                    placeholder="ค้นหาเอกสารตามชื่อ, ไฟล์, หรือ Tags..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0D9488] shadow-2xs"
-                  />
-                </div>
-
-                <div className="relative">
-                  <select
-                    value={selectedMission}
-                    onChange={(e) => setSelectedMission(e.target.value)}
-                    className="w-full py-2.5 px-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#0D9488] shadow-2xs appearance-none cursor-pointer"
-                  >
-                    <option value="ALL">ทุกหมวดหมู่ (All)</option>
-                    <option value="การจัดการเลือกตั้ง">การจัดการเลือกตั้ง</option>
-                    <option value="สืบสวนและไต่สวน">สืบสวนและไต่สวน</option>
-                    <option value="พรรคการเมือง">พรรคการเมือง</option>
-                    <option value="บริหารทั่วไป">บริหารทั่วไป</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3.5 pointer-events-none" />
-                </div>
-
-                <div className="relative">
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="w-full py-2.5 px-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#0D9488] shadow-2xs appearance-none cursor-pointer"
-                  >
-                    <option value="ALL">ทุกสถานะ (All Status)</option>
-                    <option value="NORMAL">ปกติ (Normal)</option>
-                    <option value="NEAR_DUE">ใกล้ครบกำหนด (Near Due)</option>
-                    <option value="OVERDUE">เกิน SLA (Overdue)</option>
-                    <option value="COMPLETED">เสร็จสิ้น (Completed)</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3.5 pointer-events-none" />
-                </div>
-
-                <div className="relative">
-                  <select
-                    value={selectedPrivacy}
-                    onChange={(e) => setSelectedPrivacy(e.target.value)}
-                    className="w-full py-2.5 px-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#0D9488] shadow-2xs appearance-none cursor-pointer"
-                  >
-                    <option value="ALL">ทุกชั้นความลับ</option>
-                    <option value="INTERNAL">INTERNAL</option>
-                    <option value="CONFIDENTIAL">CONFIDENTIAL</option>
-                    <option value="PUBLIC">PUBLIC</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3.5 pointer-events-none" />
-                </div>
-
-              </div>
-
-              {/* ENTERPRISE DATA TABLE */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    
-                    <thead className="bg-[#F8FAFC] text-slate-500 border-b border-slate-200 text-[11px] font-bold">
-                      <tr>
-                        <th className="p-4">รหัส / ชื่อเอกสาร</th>
-                        <th className="p-4">หมวดหมู่ & หน่วยงาน</th>
-                        <th className="p-4 text-center">ชั้นความลับ</th>
-                        <th className="p-4 text-center">เวอร์ชัน</th>
-                        <th className="p-4 text-center">สถานะ INDEXING</th>
-                        <th className="p-4 text-center">สถานะ WORKFLOW</th>
-                        <th className="p-4">อายุเอกสาร (RETENTION)</th>
-                        <th className="p-4 text-center">การจัดการ (ACTIONS)</th>
-                      </tr>
-                    </thead>
-
-                    <tbody className="divide-y divide-slate-100">
-                      {filteredCases.slice(0, 8).map((c, index) => (
-                        <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
-                          
-                          {/* Col 1 */}
-                          <td className="p-4 max-w-sm">
-                            <div className="flex items-start gap-3">
-                              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <FileText className="w-4 h-4" />
-                              </div>
-                              <div className="space-y-1">
-                                <div 
-                                  onClick={() => setSelectedCase(c)}
-                                  className="font-bold text-slate-900 hover:text-[#0D9488] cursor-pointer transition-colors leading-snug"
-                                >
-                                  {c.allegation}: {c.details.substring(0, 48)}...
-                                </div>
-                                <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
-                                  <span className="font-mono">{c.caseNumber}</span>
-                                  <span>·</span>
-                                  <span>{c.missionGroup} ({c.province})</span>
-                                </div>
-                                <div className="flex items-center gap-1 text-[10px] text-emerald-600 font-semibold">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                  <span>Clean · DXC Linkage Verified</span>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Col 2 */}
-                          <td className="p-4 text-xs text-slate-700">
-                            <div className="font-semibold text-slate-800">{c.missionGroup}</div>
-                            <div className="text-[10px] text-slate-400">สนง.กกต.จว. {c.province} ({c.constituency})</div>
-                          </td>
-
-                          {/* Col 3 */}
-                          <td className="p-4 text-center">
-                            <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">
-                              {index % 2 === 0 ? "INTERNAL" : "PUBLIC"}
-                            </span>
-                          </td>
-
-                          {/* Col 4 */}
-                          <td className="p-4 text-center">
-                            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-semibold flex items-center justify-center gap-1">
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              <span>v{index === 0 ? "2.4" : index === 1 ? "3.1" : "1.0"}</span>
-                            </span>
-                          </td>
-
-                          {/* Col 5 */}
-                          <td className="p-4 text-center">
-                            <span className="px-3 py-1 rounded-full bg-[#E6FFFA] text-[#0D9488] border border-[#0D9488]/30 text-[10px] font-bold inline-flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" />
-                              <span>{142 - index * 12} Chunks</span>
-                            </span>
-                          </td>
-
-                          {/* Col 6 */}
-                          <td className="p-4 text-center">
-                            <div className="inline-flex items-center justify-between gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-                              <span>อนุมัติ (Approved)</span>
-                              <ChevronDown className="w-3 h-3 text-emerald-600" />
-                            </div>
-                          </td>
-
-                          {/* Col 7 */}
-                          <td className="p-4 text-xs text-slate-700">
-                            <div className="font-semibold text-slate-800">
-                              {c.slaStatus === "OVERDUE" ? "เกินกำหนด SLA" : `เหลือ ${c.remainingDays} วัน`}
-                            </div>
-                            <div className="text-[10px] text-slate-400">
-                              หมดอายุ 2569-03-15
-                            </div>
-                          </td>
-
-                          {/* Col 8 */}
-                          <td className="p-4 text-center">
-                            <div className="flex items-center justify-center gap-2 text-slate-400">
-                              <button
-                                onClick={() => setSelectedCase(c)}
-                                title="แก้ไข / ดูสำนวน"
-                                className="p-1 hover:text-[#0D9488] transition-colors"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={handleTriggerSync}
-                                title="Sync ข้อมูล"
-                                className="p-1 hover:text-blue-600 transition-colors"
-                              >
-                                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-                              </button>
-                              <button
-                                onClick={() => alert(`ลบสำนวน: ${c.caseNumber}`)}
-                                title="ลบเอกสาร"
-                                className="p-1 hover:text-rose-600 transition-colors"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-
-                        </tr>
-                      ))}
-                    </tbody>
-
-                  </table>
-                </div>
-
-                {/* Pagination */}
-                <div className="p-4 bg-[#F8FAFC] border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-                  <div>
-                    แสดง 8 จากทั้งหมด <strong className="text-slate-800">{filteredCases.length}</strong> รายการ
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-50">
-                      ย้อนกลับ
-                    </button>
-                    <span className="px-3 py-1 rounded-lg bg-[#0D9488] text-white font-bold">1</span>
-                    <button className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">
-                      2
-                    </button>
-                    <button className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">
-                      ถัดไป
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
           )}
 
-        </main>
+          {activeView === "workspace" && (
+            <RoleWorkspaceView cases={cases} roleId={selectedRoleId} onSelectCase={(caseItem) => openCase(caseItem)} />
+          )}
 
+          {activeView === "cases" && (
+            <CaseListView
+              cases={cases}
+              onSelectCase={(caseItem) => openCase(caseItem)}
+              openNewModal={() => setIsNewModalOpen(true)}
+              searchQuery={globalSearch}
+              setSearchQuery={setGlobalSearch}
+              statusFilter={caseStatusFilter}
+              setStatusFilter={setCaseStatusFilter}
+            />
+          )}
+
+          {activeView === "workflow" && <WorkflowVisualizer />}
+
+          {activeView === "sla" && <SlaMonitoringView cases={cases} onSelectCase={(caseItem) => openCase(caseItem)} />}
+
+          {activeView === "citizen" && (isCitizenFormOpen ? (
+            <NewComplaintForm
+              mode="citizen"
+              presentation="page"
+              onClose={() => selectCitizenTab("overview")}
+              onAddCase={(newCase) => setCases((currentCases) => [newCase, ...currentCases])}
+            />
+          ) : (
+            <CitizenServiceView
+              cases={cases}
+              activeTab={citizenTab}
+              onTabChange={selectCitizenTab}
+              onOpenNewComplaint={() => selectCitizenTab("new")}
+              onSelectCase={(caseItem) => openCase(caseItem, true)}
+            />
+          ))}
+
+          {activeView === "governance" && <GovernanceCenterView />}
+
+          {activeView === "integrations" && (
+            <div className="grid gap-4 lg:grid-cols-3">
+              {INTEGRATIONS.map((integration) => (
+                <article key={integration.shortName} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-start justify-between gap-4">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                      <Database className="h-5 w-5" />
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-bold text-emerald-700 ring-1 ring-emerald-200">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Online
+                    </span>
+                  </div>
+                  <div className="mt-5">
+                    <h2 className="text-sm font-bold text-slate-950">{integration.name}</h2>
+                    <div className="mt-1 text-xs font-semibold text-blue-700">{integration.shortName}</div>
+                    <p className="mt-3 min-h-10 text-xs leading-5 text-slate-500">{integration.description}</p>
+                  </div>
+                  <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4 text-[11px] text-slate-500">
+                    <span>Response time</span>
+                    <span className="font-kanit font-semibold text-slate-800">{integration.latency}</span>
+                  </div>
+                </article>
+              ))}
+
+              <article className="rounded-2xl border border-slate-200 bg-[#1B3F8B] p-5 text-white shadow-sm lg:col-span-3">
+                <div className="grid gap-5 md:grid-cols-[1.2fr_1fr_1fr] md:items-center">
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-bold"><ShieldCheck className="h-5 w-5 text-emerald-400" /> Integration Security</div>
+                    <p className="mt-2 text-xs leading-5 text-slate-400">ทุกคำขอผ่าน API Gateway, Mutual TLS และบันทึก Audit Log ตามนโยบายความมั่นคงปลอดภัย</p>
+                  </div>
+                  <div className="rounded-xl bg-white/5 p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Availability</div>
+                    <div className="mt-1 text-xl font-bold text-emerald-400">99.97%</div>
+                  </div>
+                  <div className="rounded-xl bg-white/5 p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-slate-500">Last sync</div>
+                    <div className="mt-1 text-sm font-semibold">วันนี้ 13:42 น.</div>
+                  </div>
+                </div>
+              </article>
+            </div>
+          )}
+        </main>
       </div>
 
-      {/* Electronic Case File Modal (e-Dossier) */}
-      {selectedCase && (
-        <CaseDetailModal
-          caseItem={selectedCase}
-          onClose={() => setSelectedCase(null)}
-        />
-      )}
-
-      {/* New Complaint Form Modal */}
-      {isNewModalOpen && (
+      {selectedCase && <CaseDetailModal caseItem={selectedCase} readOnly={selectedCaseReadOnly} onClose={() => setSelectedCase(null)} />}
+      {isNewModalOpen && !isCitizenPortal && (
         <NewComplaintForm
+          mode="officer"
           onClose={() => setIsNewModalOpen(false)}
-          onAddCase={handleAddCase}
+          onAddCase={(newCase) => setCases((currentCases) => [newCase, ...currentCases])}
         />
       )}
-
     </div>
+  );
+}
+
+function PortalNavigation({
+  activeView,
+  onSelect,
+  citizenOnly = false,
+  roleId,
+  citizenTab = "overview",
+  citizenFormOpen = false,
+  citizenActionCount = 0,
+  onCitizenTabChange,
+}: {
+  activeView: PortalView;
+  onSelect: (view: PortalView) => void;
+  citizenOnly?: boolean;
+  roleId: string;
+  citizenTab?: CitizenTab;
+  citizenFormOpen?: boolean;
+  citizenActionCount?: number;
+  onCitizenTabChange?: (tab: CitizenTab) => void;
+}) {
+  if (citizenOnly) {
+    return (
+      <nav className="space-y-1.5" aria-label="เมนูบริการผู้ร้องเรียน">
+        {CITIZEN_NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const isActive = item.id === "new" ? citizenFormOpen : !citizenFormOpen && citizenTab === item.id;
+          const badgeCount = item.id === "correction" ? citizenActionCount : 0;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onCitizenTabChange?.(item.id)}
+              className={`group flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
+                isActive
+                  ? "bg-[#1B3F8B] text-white shadow-sm"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-[#1B3F8B]"
+              }`}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <Icon className={`h-[18px] w-[18px] shrink-0 ${isActive ? "text-white" : "text-slate-400 group-hover:text-[#1B3F8B]"}`} />
+              <span className="min-w-0 flex-1 truncate text-xs font-semibold">{item.label}</span>
+              {badgeCount > 0 ? (
+                <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[9px] font-bold ${isActive ? "bg-white text-[#1B3F8B]" : "bg-rose-100 text-rose-700"}`}>
+                  {badgeCount}
+                </span>
+              ) : null}
+              {isActive && <ChevronRight className="h-4 w-4 text-white/75" />}
+            </button>
+          );
+        })}
+      </nav>
+    );
+  }
+
+  const officerViews: PortalView[] = ["dashboard", "workspace", "cases", "workflow", "sla"];
+  const allowedViews = roleId === "admin" ? NAV_ITEMS.map((item) => item.id) : officerViews;
+  return (
+    <nav className="space-y-1.5" aria-label="เมนูระบบงานหลัก">
+      {NAV_ITEMS.filter((item) => allowedViews.includes(item.id)).map((item) => {
+        const Icon = item.icon;
+        const isActive = activeView === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onSelect(item.id)}
+            className={`group flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
+              isActive
+                ? "bg-[#1B3F8B] text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-50 hover:text-[#1B3F8B]"
+            }`}
+            aria-current={isActive ? "page" : undefined}
+          >
+            <Icon className={`h-[18px] w-[18px] shrink-0 ${isActive ? "text-white" : "text-slate-400 group-hover:text-[#1B3F8B]"}`} />
+            <span className="min-w-0 flex-1 truncate text-xs font-semibold">{item.label}</span>
+            {isActive && <ChevronRight className="h-4 w-4 text-white/70" />}
+          </button>
+        );
+      })}
+    </nav>
   );
 }

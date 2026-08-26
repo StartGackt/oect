@@ -4,40 +4,10 @@ import { useState } from "react";
 import { 
   Search, 
   ShieldCheck, 
-  Clock, 
-  CheckCircle2, 
-  FileText, 
-  MapPin, 
-  User, 
   ArrowRight,
-  MessageSquare,
-  HelpCircle,
   AlertCircle
 } from "lucide-react";
-
-interface ComplaintItem {
-  id: number;
-  electionType: string;
-  announcementDate: string;
-  caseNumber: string;
-  electionDate: string;
-  receivedDate: string;
-  constituency: string;
-  district: string;
-  province: string;
-  officer: string;
-  complainants: string;
-  respondent: string;
-  allegation: string;
-  details: string;
-  missionGroup: string;
-  currentStage: string;
-  currentSection: string;
-  stageId: number;
-  slaDays: number;
-  remainingDays: number;
-  slaStatus: string;
-}
+import type { ComplaintItem } from "@/components/oect/complaintDomain";
 
 interface CitizenTrackingViewProps {
   cases: ComplaintItem[];
@@ -79,7 +49,7 @@ export default function CitizenTrackingView({ cases, onSelectCase }: CitizenTrac
       
       {/* Search Header Banner */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E2E8F0] shadow-xs text-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-[#EBF8FF] text-[#1E4E8C] flex items-center justify-center mx-auto border border-[#BEE3F8]">
+        <div className="w-12 h-12 rounded-2xl bg-[#4FB3E8]/10 text-[#1B3F8B] flex items-center justify-center mx-auto border border-[#4FB3E8]/40">
           <Search className="w-6 h-6" />
         </div>
         <div>
@@ -99,11 +69,11 @@ export default function CitizenTrackingView({ cases, onSelectCase }: CitizenTrac
             placeholder="กรอกเลขที่คำร้อง เช่น MP-CMI-2569-001"
             value={trackQuery}
             onChange={(e) => setTrackQuery(e.target.value)}
-            className="flex-1 px-4 py-2.5 text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-xl focus:outline-none focus:border-[#1E4E8C] focus:bg-white"
+            className="flex-1 px-4 py-2.5 text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-xl focus:outline-none focus:border-[#1B3F8B] focus:bg-white"
           />
           <button
             type="submit"
-            className="px-5 py-2.5 bg-[#173B6B] hover:bg-[#0B1E36] text-white text-xs font-medium rounded-xl transition-colors shadow-xs"
+            className="px-5 py-2.5 bg-[#1B3F8B] hover:bg-[#1B3F8B] text-white text-xs font-medium rounded-xl transition-colors shadow-xs"
           >
             ค้นหา
           </button>
@@ -122,7 +92,7 @@ export default function CitizenTrackingView({ cases, onSelectCase }: CitizenTrac
                   setNotFound(false);
                 }
               }}
-              className="px-2.5 py-1 rounded-lg bg-[#F7FAFC] hover:bg-[#EBF8FF] text-[#1E4E8C] border border-[#E2E8F0] font-medium"
+              className="px-2.5 py-1 rounded-lg bg-[#F7FAFC] hover:bg-[#4FB3E8]/10 text-[#1B3F8B] border border-[#E2E8F0] font-medium"
             >
               {sample}
             </button>
@@ -133,7 +103,7 @@ export default function CitizenTrackingView({ cases, onSelectCase }: CitizenTrac
       {notFound && (
         <div className="bg-red-50 border border-red-200 p-6 rounded-2xl text-center space-y-2">
           <AlertCircle className="w-6 h-6 text-red-500 mx-auto" />
-          <div className="text-sm font-semibold text-red-800">ไม่พบข้อมูลตามคำค้นหา "{trackQuery}"</div>
+          <div className="text-sm font-semibold text-red-800">ไม่พบข้อมูลตามคำค้นหา “{trackQuery}”</div>
           <p className="text-xs text-red-600">โปรดตรวจสอบเลขที่เรื่องร้องเรียนอีกครั้ง หรือติดต่อ สนง.กกต.จว. ประจำพื้นที่</p>
         </div>
       )}
@@ -145,7 +115,7 @@ export default function CitizenTrackingView({ cases, onSelectCase }: CitizenTrac
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-[#EDF2F7] gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-[#1E4E8C]">{searchedCase.caseNumber}</span>
+                <span className="text-sm font-bold text-[#1B3F8B]">{searchedCase.caseNumber}</span>
                 <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-semibold border border-blue-100">
                   {searchedCase.electionType}
                 </span>
@@ -171,7 +141,7 @@ export default function CitizenTrackingView({ cases, onSelectCase }: CitizenTrac
             <div className="text-xs font-semibold text-[#1A202C]">ไทม์ไลน์ความคืบหน้ากระบวนการ:</div>
             
             <div className="space-y-3">
-              {trackingSteps.map((s, idx) => {
+              {trackingSteps.map((s) => {
                 const isPassed = searchedCase.stageId >= s.step;
                 const isCurrent = Math.min(5, Math.ceil(searchedCase.stageId / 2)) === s.step;
                 return (
@@ -179,7 +149,7 @@ export default function CitizenTrackingView({ cases, onSelectCase }: CitizenTrac
                     key={s.step}
                     className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
                       isCurrent
-                        ? "bg-[#EBF8FF] border-[#1E4E8C] shadow-xs"
+                        ? "bg-[#4FB3E8]/10 border-[#1B3F8B] shadow-xs"
                         : isPassed
                         ? "bg-[#F7FAFC] border-[#E2E8F0]"
                         : "bg-white border-[#EDF2F7] opacity-40"
@@ -189,7 +159,7 @@ export default function CitizenTrackingView({ cases, onSelectCase }: CitizenTrac
                       <div
                         className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
                           isCurrent
-                            ? "bg-[#1E4E8C] text-white"
+                            ? "bg-[#1B3F8B] text-white"
                             : isPassed
                             ? "bg-emerald-500 text-white"
                             : "bg-[#E2E8F0] text-[#718096]"
@@ -215,14 +185,14 @@ export default function CitizenTrackingView({ cases, onSelectCase }: CitizenTrac
           </div>
 
           {/* Safe Privacy Notice */}
-          <div className="bg-[#FAF8F5] p-4 rounded-2xl border border-[#E8E3DA] flex items-center justify-between text-xs text-[#718096]">
+          <div className="bg-[#FFD600]/10 p-4 rounded-2xl border border-[#FFD600]/35 flex items-center justify-between text-xs text-[#718096]">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
               <span>ข้อมูลถูกควบคุมตามระเบียบ พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)</span>
             </div>
             <button
               onClick={() => onSelectCase(searchedCase)}
-              className="text-[#173B6B] font-medium hover:underline flex items-center gap-1"
+              className="text-[#1B3F8B] font-medium hover:underline flex items-center gap-1"
             >
               <span>ดูข้อมูลเต็ม</span>
               <ArrowRight className="w-3.5 h-3.5" />

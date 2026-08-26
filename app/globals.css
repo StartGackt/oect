@@ -1,20 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
 @import "tailwindcss";
 
 :root {
-  --oect-teal-900: #042f2e;
-  --oect-teal-800: #115e59;
-  --oect-teal-700: #0f766e;
-  --oect-teal-600: #0d9488;
-  --oect-teal-500: #14b8a6;
-  --oect-teal-100: #ccfbf1;
-  --oect-teal-50: #f0fdfa;
+  --oect-brand-blue: #1B3F8B;
+  --oect-brand-sky: #4FB3E8;
+  --oect-brand-yellow: #FFD600;
+
+  --oect-teal-900: #1B3F8B;
+  --oect-teal-800: #1B3F8B;
+  --oect-teal-700: #1B3F8B;
+  --oect-teal-600: #4FB3E8;
+  --oect-teal-500: #4FB3E8;
+  --oect-teal-100: color-mix(in srgb, #4FB3E8 22%, white);
+  --oect-teal-50: color-mix(in srgb, #4FB3E8 10%, white);
   
-  --oect-navy-950: #071326;
-  --oect-navy-900: #0B1E36;
-  --oect-navy-800: #102A4C;
-  --oect-navy-700: #173B6B;
-  --oect-navy-600: #1E4E8C;
+  --oect-navy-950: #1B3F8B;
+  --oect-navy-900: #1B3F8B;
+  --oect-navy-800: #1B3F8B;
+  --oect-navy-700: #1B3F8B;
+  --oect-navy-600: #1B3F8B;
 
   --oect-bg: #F8FAFC;
   --oect-surface: #FFFFFF;
@@ -24,6 +27,42 @@
 }
 
 @theme inline {
+  --color-blue-50: color-mix(in srgb, var(--oect-brand-sky) 8%, white);
+  --color-blue-100: color-mix(in srgb, var(--oect-brand-sky) 18%, white);
+  --color-blue-200: color-mix(in srgb, var(--oect-brand-sky) 34%, white);
+  --color-blue-300: var(--oect-brand-sky);
+  --color-blue-400: var(--oect-brand-sky);
+  --color-blue-500: var(--oect-brand-sky);
+  --color-blue-600: var(--oect-brand-blue);
+  --color-blue-700: var(--oect-brand-blue);
+  --color-blue-800: var(--oect-brand-blue);
+  --color-blue-900: var(--oect-brand-blue);
+  --color-blue-950: var(--oect-brand-blue);
+
+  --color-amber-50: color-mix(in srgb, var(--oect-brand-yellow) 8%, white);
+  --color-amber-100: color-mix(in srgb, var(--oect-brand-yellow) 18%, white);
+  --color-amber-200: color-mix(in srgb, var(--oect-brand-yellow) 34%, white);
+  --color-amber-300: var(--oect-brand-yellow);
+  --color-amber-400: var(--oect-brand-yellow);
+  --color-amber-500: var(--oect-brand-yellow);
+  --color-amber-600: var(--oect-brand-yellow);
+  --color-amber-700: var(--oect-brand-blue);
+  --color-amber-800: var(--oect-brand-blue);
+  --color-amber-900: var(--oect-brand-blue);
+  --color-amber-950: var(--oect-brand-blue);
+
+  --color-teal-50: color-mix(in srgb, var(--oect-brand-sky) 8%, white);
+  --color-teal-100: color-mix(in srgb, var(--oect-brand-sky) 18%, white);
+  --color-teal-200: color-mix(in srgb, var(--oect-brand-sky) 34%, white);
+  --color-teal-300: var(--oect-brand-sky);
+  --color-teal-400: var(--oect-brand-sky);
+  --color-teal-500: var(--oect-brand-sky);
+  --color-teal-600: var(--oect-brand-blue);
+  --color-teal-700: var(--oect-brand-blue);
+  --color-teal-800: var(--oect-brand-blue);
+  --color-teal-900: var(--oect-brand-blue);
+  --color-teal-950: var(--oect-brand-blue);
+
   --color-oect-teal-900: var(--oect-teal-900);
   --color-oect-teal-800: var(--oect-teal-800);
   --color-oect-teal-700: var(--oect-teal-700);
@@ -47,6 +86,83 @@ body {
   font-weight: 300;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.oect-header-gradient {
+  background:
+    radial-gradient(circle at 92% 0%, rgb(79 179 232 / 42%), transparent 34%),
+    linear-gradient(135deg, #1B3F8B 0%, #1B3F8B 66%, #4FB3E8 100%);
+}
+
+.btn-primary,
+.btn-secondary {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1rem;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.btn-primary {
+  border: 1px solid #1B3F8B;
+  background: #1B3F8B;
+  color: #fff;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 10%);
+}
+
+.btn-primary:hover {
+  border-color: #4FB3E8;
+  background: #4FB3E8;
+  color: #1B3F8B;
+}
+
+.btn-secondary {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+}
+
+.btn-secondary:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible {
+  outline: 3px solid rgb(79 179 232 / 55%);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Kanit Font Weight Utility Classes */

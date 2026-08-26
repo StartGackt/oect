@@ -4,56 +4,27 @@ import { useState } from "react";
 import { 
   X, 
   FileText, 
-  Calendar, 
-  MapPin, 
   User, 
   ShieldCheck, 
-  Clock, 
-  CheckCircle2, 
-  AlertTriangle, 
   Send, 
   Download, 
   Printer, 
   Eye, 
   EyeOff, 
-  Layers, 
-  Paperclip,
-  Share2
+  Paperclip
 } from "lucide-react";
-
-interface ComplaintItem {
-  id: number;
-  electionType: string;
-  announcementDate: string;
-  caseNumber: string;
-  electionDate: string;
-  receivedDate: string;
-  constituency: string;
-  district: string;
-  province: string;
-  officer: string;
-  complainants: string;
-  respondent: string;
-  allegation: string;
-  details: string;
-  missionGroup: string;
-  currentStage: string;
-  currentSection: string;
-  stageId: number;
-  slaDays: number;
-  remainingDays: number;
-  slaStatus: string;
-}
+import { WORKFLOW_STEPS, formatThaiDate, getSlaLabel, type ComplaintItem } from "@/components/oect/complaintDomain";
 
 interface CaseDetailModalProps {
   caseItem: ComplaintItem;
   onClose: () => void;
+  readOnly?: boolean;
+  presentation?: "modal" | "page";
 }
 
-export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalProps) {
+export default function CaseDetailModal({ caseItem, onClose, readOnly = false, presentation = "page" }: CaseDetailModalProps) {
   const [maskData, setMaskData] = useState<boolean>(true);
   const [officerNote, setOfficerNote] = useState<string>("");
-  const [actionSuccess, setActionSuccess] = useState<boolean>(false);
   const [activeSubTab, setActiveSubTab] = useState<"info" | "timeline" | "action">("info");
 
   // Masking helper
@@ -62,62 +33,50 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
     return text.replace(/(\S{3})\S+(\S{2})/g, "$1***$2");
   };
 
-  const workflowSteps = [
-    { id: 1, title: "1. ตรวจคำร้องและมอบหมายผู้รับผิดชอบ", dept: "สนง.กกต.จว.", sla: "3 วัน" },
-    { id: 2, title: "2. ผอ.กกต.จว. พิจารณาสั่งรับ/ไม่รับ", dept: "สนง.กกต.จว.", sla: "3 วัน" },
-    { id: 3, title: "3. สืบสวน/ไต่สวน (กรณีสั่งรับ)", dept: "สนง.กกต.จว.", sla: "90 วัน (20+15+15)" },
-    { id: 4, title: "4. ผอ.กกต.จว. สรุปความเห็น & ส่งสำนวน", dept: "สนง.กกต.จว.", sla: "-" },
-    { id: 5, title: "5. ตรวจสำนวนส่วนกลาง (4 ลำดับชั้น)", dept: "สนง.กกต. ส่วนกลาง", sla: "60 วัน" },
-    { id: 6, title: "6. ลธ.กกต. มีความเห็น", dept: "สนง.กกต. ส่วนกลาง", sla: "9 วัน (รวม 69 วัน)" },
-    { id: 7, title: "7. คณะอนุวินิจฉัย มีความเห็น", dept: "สนง.กกต. ส่วนกลาง", sla: "90 วัน" },
-    { id: 8, title: "8. กกต. พิจารณาวินิจฉัยชี้ขาด", dept: "สนง.กกต. ส่วนกลาง", sla: "90 วัน" },
-    { id: 9, title: "9. จัดทำคำวินิจฉัย กกต.", dept: "สนง.กกต. ส่วนกลาง", sla: "60 วัน" },
-    { id: 10, title: "10. แจ้งคู่กรณี & ปิดสำนวน", dept: "สนง.กกต. ส่วนกลาง", sla: "15 วัน" },
-  ];
+  const workflowSteps = WORKFLOW_STEPS.map((step) => ({ id: step.id, title: `${step.id}. ${step.title}`, dept: step.section, sla: step.slaLabel }));
 
   const handleSaveAction = (e: React.FormEvent) => {
     e.preventDefault();
-    setActionSuccess(true);
-    setTimeout(() => {
-      setActionSuccess(false);
+    window.setTimeout(() => {
       alert("บันทึกคำสั่งและอัปเดตสถานะสำนวนเรียบร้อยแล้ว");
-    }, 1200);
+    }, 300);
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-[#E2E8F0] overflow-hidden my-6 animate-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+    <div className={presentation === "page" ? "fixed inset-0 z-50 overflow-y-auto bg-slate-50" : "fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-xs"}>
+      <div role={presentation === "modal" ? "dialog" : undefined} aria-modal={presentation === "modal" ? true : undefined} aria-labelledby="case-detail-title" className={presentation === "page" ? "mx-auto flex min-h-screen w-full max-w-[1480px] flex-col overflow-hidden border-x border-slate-200 bg-white" : "my-6 flex max-h-[90vh] w-full max-w-4xl animate-in flex-col overflow-hidden rounded-3xl border border-[#E2E8F0] bg-white shadow-2xl zoom-in-95 duration-150"}>
         
         {/* Modal Top Header */}
         <div className="oect-header-gradient text-white p-5 sm:px-8 flex items-center justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-[#ECC94B] text-[#0B1E36] font-bold text-xs">
+              <span className="px-2.5 py-0.5 rounded-full bg-[#FFD600] text-[#1B3F8B] font-bold text-xs">
                 {caseItem.caseNumber}
               </span>
               <span className="text-xs text-white/80">
                 ประเภท: {caseItem.electionType} · กลุ่ม: {caseItem.missionGroup}
               </span>
             </div>
-            <h2 className="text-base sm:text-lg font-medium text-white">
-              สำนวนอิเล็กทรอนิกส์ (e-Dossier Case File)
+            <h2 id="case-detail-title" className="text-base sm:text-lg font-medium text-white">
+              {readOnly ? "รายละเอียดคำร้องและสถานะที่เปิดเผยได้" : "สำนวนอิเล็กทรอนิกส์ (e-Dossier Case File)"}
             </h2>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            {!readOnly && <button
               onClick={() => setMaskData(!maskData)}
               className={`p-2 rounded-xl text-xs flex items-center gap-1.5 transition-colors ${
-                maskData ? "bg-white/20 text-[#ECC94B]" : "bg-red-500/80 text-white"
+                maskData ? "bg-white/20 text-[#FFD600]" : "bg-red-500/80 text-white"
               }`}
               title="เปิด/ปิดการปกปิดข้อมูลส่วนบุคคลตาม พ.ร.บ. PDPA"
             >
               {maskData ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               <span className="hidden sm:inline">{maskData ? "PDPA Masked" : "Unmasked"}</span>
-            </button>
+            </button>}
 
             <button
               onClick={onClose}
+              aria-label="ปิดรายละเอียดสำนวน"
               className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
             >
               <X className="w-5 h-5" />
@@ -131,7 +90,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
             <button
               onClick={() => setActiveSubTab("info")}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                activeSubTab === "info" ? "bg-white text-[#173B6B] shadow-2xs" : "text-[#718096] hover:text-[#1A202C]"
+                activeSubTab === "info" ? "bg-white text-[#1B3F8B] shadow-2xs" : "text-[#718096] hover:text-[#1A202C]"
               }`}
             >
               📄 ข้อมูลสำนวน & พยานหลักฐาน
@@ -139,19 +98,19 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
             <button
               onClick={() => setActiveSubTab("timeline")}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                activeSubTab === "timeline" ? "bg-white text-[#173B6B] shadow-2xs" : "text-[#718096] hover:text-[#1A202C]"
+                activeSubTab === "timeline" ? "bg-white text-[#1B3F8B] shadow-2xs" : "text-[#718096] hover:text-[#1A202C]"
               }`}
             >
               ⏱️ ลำดับขั้นตอน Workflow & SLA
             </button>
-            <button
+            {!readOnly && <button
               onClick={() => setActiveSubTab("action")}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                activeSubTab === "action" ? "bg-[#173B6B] text-white shadow-2xs" : "text-[#718096] hover:text-[#1A202C]"
+                activeSubTab === "action" ? "bg-[#1B3F8B] text-white shadow-2xs" : "text-[#718096] hover:text-[#1A202C]"
               }`}
             >
               ✍️ บันทึกคำสั่ง / ความเห็น
-            </button>
+            </button>}
           </div>
 
           <div className="hidden sm:flex items-center gap-2 text-xs">
@@ -165,13 +124,13 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
                   : "bg-emerald-100 text-emerald-800"
               }`}
             >
-              {caseItem.slaStatus === "OVERDUE" ? `เกิน ${Math.abs(caseItem.remainingDays)} วัน` : `เหลือ ${caseItem.remainingDays} วัน`}
+              {getSlaLabel(caseItem)}
             </span>
           </div>
         </div>
 
         {/* Modal Scrollable Content */}
-        <div className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6">
+        <div className={`flex-1 space-y-6 p-6 sm:p-8 ${presentation === "modal" ? "overflow-y-auto" : ""}`}>
           
           {/* TAB 1: INFO & EVIDENCE */}
           {activeSubTab === "info" && (
@@ -181,21 +140,29 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#F7FAFC] p-4 rounded-2xl border border-[#EDF2F7]">
                 <div>
                   <span className="text-[10px] text-[#718096] uppercase font-medium">วันที่รับคำร้อง</span>
-                  <div className="text-xs font-semibold text-[#1A202C]">{caseItem.receivedDate}</div>
+                  <div className="text-xs font-semibold text-[#1A202C]">{formatThaiDate(caseItem.receivedDate)}</div>
                 </div>
                 <div>
                   <span className="text-[10px] text-[#718096] uppercase font-medium">วันเลือกตั้ง</span>
-                  <div className="text-xs font-semibold text-[#1A202C]">{caseItem.electionDate}</div>
+                  <div className="text-xs font-semibold text-[#1A202C]">{formatThaiDate(caseItem.electionDate)}</div>
                 </div>
                 <div>
                   <span className="text-[10px] text-[#718096] uppercase font-medium">วันประกาศผล</span>
-                  <div className="text-xs font-semibold text-[#1A202C]">{caseItem.announcementDate}</div>
+                  <div className="text-xs font-semibold text-[#1A202C]">{formatThaiDate(caseItem.announcementDate)}</div>
                 </div>
                 <div>
                   <span className="text-[10px] text-[#718096] uppercase font-medium">พื้นที่ / เขตเลือกตั้ง</span>
-                  <div className="text-xs font-semibold text-[#173B6B]">จ.{caseItem.province} {caseItem.constituency}</div>
+                  <div className="text-xs font-semibold text-[#1B3F8B]">จ.{caseItem.province} {caseItem.constituency}</div>
                 </div>
               </div>
+
+              {!readOnly && (
+                <div className="grid gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 sm:grid-cols-[auto_1fr_1fr] sm:items-center">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-sm font-bold text-white">{caseItem.officer.slice(0, 2)}</span>
+                  <div><div className="text-[10px] font-bold uppercase tracking-wide text-blue-500">ผู้รับผิดชอบปัจจุบัน</div><div className="mt-1 text-sm font-bold text-blue-950">{caseItem.officer}</div><div className="mt-1 text-[10px] text-blue-700">พนักงานผู้ได้รับมอบหมาย · {caseItem.currentSection}</div></div>
+                  <div className="grid grid-cols-2 gap-3 text-[10px]"><div><div className="text-blue-500">โทรศัพท์</div><div className="mt-1 font-semibold text-blue-950">053-***-184</div></div><div><div className="text-blue-500">วันที่รับมอบหมาย</div><div className="mt-1 font-semibold text-blue-950">{formatThaiDate(caseItem.receivedDate)}</div></div></div>
+                </div>
+              )}
 
               {/* Parties: Complainants & Respondents */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -203,7 +170,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
                 {/* Complainants */}
                 <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-2xs space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-[#173B6B] flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-[#1B3F8B] flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5" />
                       <span>ผู้ร้องเรียน (Complainants)</span>
                     </span>
@@ -246,7 +213,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
                   <span className="text-xs font-semibold text-[#1A202C]">
                     ข้อกล่าวหา: <strong className="text-red-600 font-bold">{caseItem.allegation}</strong>
                   </span>
-                  <span className="text-[10px] text-[#718096]">พนักงานผู้รับผิดชอบ: {caseItem.officer}</span>
+                  <span className="text-[10px] text-[#718096]">{readOnly ? "ข้อมูลภายในของเจ้าหน้าที่ถูกปกปิด" : `พนักงานผู้รับผิดชอบ: ${caseItem.officer}`}</span>
                 </div>
                 <div className="text-xs text-[#4A5568] leading-relaxed bg-[#F7FAFC] p-4 rounded-xl border border-[#EDF2F7]">
                   {caseItem.details}
@@ -256,7 +223,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
               {/* Evidence & Attachments */}
               <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-2xs space-y-3">
                 <div className="text-xs font-semibold text-[#1A202C] flex items-center gap-1.5">
-                  <Paperclip className="w-3.5 h-3.5 text-[#173B6B]" />
+                  <Paperclip className="w-3.5 h-3.5 text-[#1B3F8B]" />
                   <span>พยานหลักฐานและเอกสารประกอบสำนวน</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -291,7 +258,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
           {activeSubTab === "timeline" && (
             <div className="space-y-4">
               <div className="text-xs text-[#718096] mb-3">
-                แสดงสถานะความคืบหน้าของสำนวนตามระเบียบ กกต. ว่าด้วยการสืบสวน การไต่สวน และการวินิจฉัยชี้ขาด พ.ศ. ๒๕๖๑
+                แสดงสถานะความคืบหน้าตามระเบียบ กกต. ว่าด้วยการสืบสวน การไต่สวน และการวินิจฉัยชี้ขาด พ.ศ. ๒๕๖๖ ฉบับที่ (๓)
               </div>
 
               <div className="space-y-3">
@@ -303,7 +270,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
                       key={step.id}
                       className={`p-3.5 rounded-2xl border flex items-center justify-between transition-all ${
                         isCurrent
-                          ? "bg-[#EBF8FF] border-[#1E4E8C] shadow-xs"
+                          ? "bg-[#4FB3E8]/10 border-[#1B3F8B] shadow-xs"
                           : isPast
                           ? "bg-[#F7FAFC] border-[#E2E8F0] opacity-80"
                           : "bg-white border-[#EDF2F7] opacity-50"
@@ -313,7 +280,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
                         <div
                           className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
                             isCurrent
-                              ? "bg-[#1E4E8C] text-white animate-pulse"
+                              ? "bg-[#1B3F8B] text-white animate-pulse"
                               : isPast
                               ? "bg-emerald-500 text-white"
                               : "bg-[#E2E8F0] text-[#718096]"
@@ -322,7 +289,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
                           {isPast ? "✓" : step.id}
                         </div>
                         <div>
-                          <div className={`text-xs font-medium ${isCurrent ? "text-[#1E4E8C] font-semibold" : "text-[#2D3748]"}`}>
+                          <div className={`text-xs font-medium ${isCurrent ? "text-[#1B3F8B] font-semibold" : "text-[#2D3748]"}`}>
                             {step.title}
                           </div>
                           <div className="text-[10px] text-[#718096]">{step.dept}</div>
@@ -334,7 +301,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
                           SLA: {step.sla}
                         </span>
                         {isCurrent && (
-                          <div className="text-[10px] text-[#1E4E8C] font-medium mt-0.5">
+                          <div className="text-[10px] text-[#1B3F8B] font-medium mt-0.5">
                             📍 กำลังดำเนินการในขั้นตอนนี้
                           </div>
                         )}
@@ -349,7 +316,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
           {/* TAB 3: OFFICIAL ACTION FORM */}
           {activeSubTab === "action" && (
             <form onSubmit={handleSaveAction} className="space-y-4">
-              <div className="bg-[#FAF8F5] p-4 rounded-2xl border border-[#E2E8F0]">
+              <div className="bg-[#FFD600]/10 p-4 rounded-2xl border border-[#E2E8F0]">
                 <span className="text-xs font-semibold text-[#1A202C] block mb-1">
                   การสั่งการและบันทึกความเห็นทางกฎหมาย (Official Ruling / Action)
                 </span>
@@ -362,7 +329,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
                 <label className="block text-xs font-medium text-[#2D3748] mb-1.5">
                   เลือกประเภทคำสั่งการ / การเปลี่ยนสถานะ
                 </label>
-                <select className="w-full text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#1E4E8C]">
+                <select className="w-full text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#1B3F8B]">
                   <option>สั่งรับคำร้อง (เสนอตั้ง คกก.สืบสวนและไต่สวน)</option>
                   <option>สั่งไม่รับคำร้อง / ยกคำร้อง (เสนอ กกต. ส่วนกลาง)</option>
                   <option>ขออนุมัติขยายระยะเวลาสืบสวน (15 วัน)</option>
@@ -382,7 +349,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
                   placeholder="ระบุข้อเท็จจริง ข้อกฎหมาย และเหตุผลแห่งการสั่งการ..."
                   value={officerNote}
                   onChange={(e) => setOfficerNote(e.target.value)}
-                  className="w-full text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-xl p-3 focus:outline-none focus:border-[#1E4E8C]"
+                  className="w-full text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-xl p-3 focus:outline-none focus:border-[#1B3F8B]"
                 />
               </div>
 
@@ -396,7 +363,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#173B6B] hover:bg-[#0B1E36] text-white text-xs font-medium transition-colors shadow-xs flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-[#1B3F8B] hover:bg-[#1B3F8B] text-white text-xs font-medium transition-colors shadow-xs flex items-center gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>บันทึกคำสั่งและลงนามอิเล็กทรอนิกส์</span>
@@ -415,7 +382,7 @@ export default function CaseDetailModal({ caseItem, onClose }: CaseDetailModalPr
           </div>
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-1 text-[#173B6B] font-medium hover:underline"
+            className="flex items-center gap-1 text-[#1B3F8B] font-medium hover:underline"
           >
             <Printer className="w-3.5 h-3.5" />
             <span>พิมพ์สำนวน</span>

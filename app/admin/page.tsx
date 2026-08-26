@@ -1,786 +1,149 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { 
-  FileText, 
-  Database, 
-  Layers, 
-  Cpu, 
-  BarChart3, 
-  Settings, 
-  Search, 
-  Plus, 
-  UploadCloud, 
-  Download, 
-  Pencil, 
-  RefreshCw, 
-  Trash2, 
-  CheckCircle2, 
-  Clock, 
-  ShieldCheck, 
-  Bell, 
-  ChevronDown, 
-  MessageSquare, 
-  Eye, 
-  ExternalLink,
-  Users,
-  Sliders,
-  Check,
-  Lock,
+import {
+  BarChart3,
+  Bell,
+  CheckCircle2,
+  ChevronRight,
+  Database,
+  FileText,
+  FileClock,
+  GitBranch,
+  KeyRound,
+  LockKeyhole,
   LogOut,
-  Sparkles,
-  ArrowRight,
-  Filter
+  MapPinned,
+  Plus,
+  RefreshCw,
+  Search,
+  Settings2,
+  ShieldCheck,
+  SlidersHorizontal,
+  UserCog,
+  Users,
 } from "lucide-react";
 import initialCasesData from "@/data/complaintsData.json";
 import CaseDetailModal from "@/components/oect/CaseDetailModal";
+import CaseListView from "@/components/oect/CaseListView";
+import DashboardView from "@/components/oect/DashboardView";
 import NewComplaintForm from "@/components/oect/NewComplaintForm";
+import { WORKFLOW_STEPS, type ComplaintItem } from "@/components/oect/complaintDomain";
+
+type AdminView = "overview" | "cases" | "users" | "workflow" | "master" | "integrations" | "security";
+
+const NAV_ITEMS = [
+  { id: "overview" as const, label: "ภาพรวมระบบ", description: "ข้อมูลคำร้องและ SLA", icon: BarChart3 },
+  { id: "cases" as const, label: "รายการเรื่องร้องเรียน", description: "ทะเบียนคำร้องและสำนวน", icon: FileText },
+  { id: "users" as const, label: "ผู้ใช้และสิทธิ์", description: "User, Role และหน่วยงาน", icon: UserCog },
+  { id: "workflow" as const, label: "Workflow และ SLA", description: "เวอร์ชัน ขั้นตอน และกฎเวลา", icon: GitBranch },
+  { id: "master" as const, label: "ข้อมูลพื้นฐาน", description: "จังหวัด เขตเลือกตั้ง และแบบฟอร์ม", icon: MapPinned },
+  { id: "integrations" as const, label: "ระบบเชื่อมโยง", description: "DXC, e-Saraban, PRAXTICOL", icon: Database },
+  { id: "security" as const, label: "Security และ Audit", description: "นโยบาย Log และ Session", icon: ShieldCheck },
+];
+
+const PAGE_META: Record<AdminView, { eyebrow: string; title: string; description: string }> = {
+  overview: { eyebrow: "System overview", title: "ภาพรวมข้อมูลและการกำกับระบบ", description: "ติดตามข้อมูลคำร้อง สถานะ Workflow และ SLA จากฐานข้อมูลชุดเดียวกับพื้นที่ทำงานเจ้าหน้าที่" },
+  cases: { eyebrow: "Complaint registry", title: "รายการเรื่องร้องเรียนทั้งหมด", description: "ค้นหา กรอง ตรวจสอบ และเปิดรายละเอียดคำร้องหรือสำนวนจากทะเบียนกลาง" },
+  users: { eyebrow: "Identity & Access Management", title: "ผู้ใช้งาน บทบาท และสิทธิ์เข้าถึง", description: "กำหนดสิทธิ์ตามบทบาท หน่วยงาน จังหวัด และขั้นตอนของ Workflow ด้วยหลัก least privilege" },
+  workflow: { eyebrow: "Versioned Workflow Administration", title: "Workflow และกฎ SLA", description: "ออกแบบ ทบทวน และเผยแพร่ขั้นตอนโดยไม่เปลี่ยนกฎกลางสำนวนที่กำลังดำเนินการ" },
+  master: { eyebrow: "Master Data Governance", title: "ข้อมูลพื้นฐานและแบบฟอร์มมาตรฐาน", description: "ดูแลจังหวัด อำเภอ ตำบล เขตเลือกตั้ง ประเภทคำร้อง และแบบ สตว.1/สตว.1/1" },
+  integrations: { eyebrow: "Government Data Exchange", title: "การเชื่อมโยงระบบภายนอก", description: "กำกับ endpoint, certificate, retry policy และประวัติการเชื่อมต่อของแต่ละระบบ" },
+  security: { eyebrow: "Security, Privacy & Audit", title: "นโยบายความปลอดภัยและการตรวจสอบ", description: "กำกับ 2FA, Auto logout, Data masking, Retention และ Audit event ที่แก้ไขย้อนหลังไม่ได้" },
+};
 
 export default function AdminConsolePage() {
-  const [cases, setCases] = useState(initialCasesData);
-  const [activeSidebarMenu, setActiveSidebarMenu] = useState<string>("cases");
-  const [activeTab, setActiveTab] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedMission, setSelectedMission] = useState<string>("ALL");
-  const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
-  const [selectedProvince, setSelectedProvince] = useState<string>("ALL");
-  const [selectedPrivacy, setSelectedPrivacy] = useState<string>("ALL");
-  
-  const [selectedCase, setSelectedCase] = useState<any | null>(null);
-  const [isNewModalOpen, setIsNewModalOpen] = useState<boolean>(false);
-  const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [cases, setCases] = useState<ComplaintItem[]>(initialCasesData as ComplaintItem[]);
+  const [activeView, setActiveView] = useState<AdminView>("overview");
+  const [selectedCase, setSelectedCase] = useState<ComplaintItem | null>(null);
+  const [isNewComplaintOpen, setIsNewComplaintOpen] = useState(false);
+  const [caseStatusFilter, setCaseStatusFilter] = useState("ALL");
+  const [message, setMessage] = useState<string | null>(null);
+  const meta = PAGE_META[activeView];
 
-  // Statistics
-  const totalCases = cases.length;
-  const normalCases = cases.filter((c) => c.slaStatus === "NORMAL").length;
-  const nearDueCases = cases.filter((c) => c.slaStatus === "NEAR_DUE").length;
-  const overdueCases = cases.filter((c) => c.slaStatus === "OVERDUE").length;
-  const completedCases = cases.filter((c) => c.slaStatus === "COMPLETED").length;
-
-  // Filtered dataset
-  const filteredCases = useMemo(() => {
-    return cases.filter((c) => {
-      // Search
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const match =
-          c.caseNumber.toLowerCase().includes(q) ||
-          c.allegation.toLowerCase().includes(q) ||
-          c.complainants.toLowerCase().includes(q) ||
-          c.respondent.toLowerCase().includes(q) ||
-          c.province.toLowerCase().includes(q) ||
-          c.district.toLowerCase().includes(q) ||
-          c.officer.toLowerCase().includes(q);
-        if (!match) return false;
-      }
-
-      // Tab filter
-      if (activeTab === "pending" && c.stageId > 2 && c.slaStatus === "COMPLETED") return false;
-      if (activeTab === "overdue" && c.slaStatus !== "OVERDUE") return false;
-      if (activeTab === "completed" && c.slaStatus !== "COMPLETED") return false;
-
-      // Dropdown filters
-      if (selectedMission !== "ALL" && c.missionGroup !== selectedMission) return false;
-      if (selectedStatus !== "ALL" && c.slaStatus !== selectedStatus) return false;
-      if (selectedProvince !== "ALL" && c.province !== selectedProvince) return false;
-
-      return true;
-    });
-  }, [cases, searchQuery, activeTab, selectedMission, selectedStatus, selectedProvince]);
-
-  const handleAddCase = (newCase: any) => {
-    setCases([newCase, ...cases]);
-  };
-
-  const handleTriggerSync = () => {
-    setIsSyncing(true);
-    setSyncMessage(null);
-    setTimeout(() => {
-      setIsSyncing(false);
-      setSyncMessage("ซิงค์ข้อมูลกับฐานข้อมูลทะเบียนราษฎร (DXC) และระบบ PRAXTICOL สำเร็จ 100%");
-      setTimeout(() => setSyncMessage(null), 4000);
-    }, 1000);
+  const notify = (text: string) => {
+    setMessage(text);
+    window.setTimeout(() => setMessage(null), 2400);
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] flex flex-col font-kanit selection:bg-[#0D9488] selection:text-white">
-      
-      {/* 1. TOP NAVBAR (EXACT STYLE FROM SCREENSHOT) */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-2xs px-4 sm:px-6 py-2.5">
-        <div className="flex items-center justify-between gap-4">
-          
-          {/* Left: Brand Identity */}
-          <div className="flex items-center gap-6">
-            <Link href="/admin" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 relative flex-shrink-0 bg-white rounded-lg p-0.5 border border-amber-400">
-                <Image
-                  src="/oect-logo.png"
-                  alt="สนง.กกต."
-                  fill
-                  className="object-contain"
-                  priority
-                />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-sm text-[#0F172A] tracking-tight">OECT ECT-CMS</span>
-                <span className="text-[10px] text-slate-400 uppercase font-semibold">ADMIN CONSOLE</span>
-              </div>
-            </Link>
-
-            {/* Navigation Switcher Pills */}
-            <div className="hidden sm:flex items-center gap-2">
-              <Link
-                href="/user"
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
-                <span>Chatbot & User Portal</span>
-              </Link>
-
-              <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold text-[#0D9488] bg-[#F0FDFA] border border-[#0D9488]/40 shadow-2xs">
-                <Sliders className="w-3.5 h-3.5 text-[#0D9488]" />
-                <span>Admin Console</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Notifications, User Profile Avatar, Logout */}
-          <div className="flex items-center gap-3">
-            
-            {/* Notification Bell */}
-            <button className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl relative transition-colors">
-              <Bell className="w-4 h-4" />
-              <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-1.5 right-1.5" />
-            </button>
-
-            {/* Admin Avatar & Role */}
-            <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
-              <div className="w-8 h-8 rounded-full bg-[#0B1E36] text-white flex items-center justify-center text-xs font-bold shadow-xs">
-                GA
-              </div>
-              <div className="text-left hidden md:block">
-                <div className="text-xs font-bold text-slate-900 leading-tight">GIT Admin (กกต.)</div>
-                <div className="text-[10px] text-slate-400 leading-tight">Super Admin</div>
-              </div>
-            </div>
-
-            {/* Logout Button */}
-            <Link
-              href="/login"
-              className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1"
-              title="ออกจากระบบ"
-            >
-              <LogOut className="w-4 h-4" />
-            </Link>
-
-          </div>
-
+    <div className="min-h-screen bg-slate-50 text-slate-950">
+      {message && <div className="fixed right-4 top-20 z-50 flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-xs font-bold text-emerald-800 shadow-xl"><CheckCircle2 className="h-4 w-4" /> {message}</div>}
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
+        <div className="flex min-h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <Link href="/admin" className="flex min-w-0 items-center gap-3"><span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-amber-300 bg-white"><Image src="/oect-logo.png" alt="ตราสัญลักษณ์สำนักงานคณะกรรมการการเลือกตั้ง" fill sizes="40px" className="object-contain p-1" priority /></span><span><span className="block text-sm font-bold">ECT-CMS</span><span className="block text-[10px] text-slate-500">System Administration Center</span></span></Link>
+          <div className="flex items-center gap-2"><Link href="/user?role=intake" className="hidden items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 sm:inline-flex"><SlidersHorizontal className="h-4 w-4" /> ระบบงานเจ้าหน้าที่</Link><button type="button" aria-label="การแจ้งเตือนผู้ดูแลระบบ" className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500"><Bell className="h-4 w-4" /><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" /></button><span className="hidden items-center gap-2 border-l border-slate-200 pl-3 md:flex"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1B3F8B] text-xs font-bold text-white">GA</span><span><span className="block text-xs font-bold">GIT Admin</span><span className="block text-[10px] text-slate-500">Super Admin · 2FA</span></span></span><Link href="/login" aria-label="ออกจากระบบ" className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600"><LogOut className="h-4 w-4" /></Link></div>
         </div>
       </header>
 
-      {/* 2. MAIN LAYOUT WITH LEFT SIDEBAR + MAIN CONTENT AREA */}
-      <div className="flex-1 flex overflow-hidden">
-        
-        {/* LEFT SIDEBAR (EXACT STYLE FROM SCREENSHOT) */}
-        <aside className="w-64 sm:w-72 bg-white border-r border-slate-200 flex flex-col justify-between p-4 flex-shrink-0 min-h-[calc(100vh-57px)]">
-          
-          <div className="space-y-4">
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-2">
-              เมนูการจัดการ
-            </div>
-
-            <nav className="space-y-1.5">
-              
-              {/* Menu Item 1: Case Management (Active in screenshot style) */}
-              <button
-                onClick={() => setActiveSidebarMenu("cases")}
-                className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group ${
-                  activeSidebarMenu === "cases"
-                    ? "bg-[#EBF5FF] border border-blue-200/80 shadow-2xs"
-                    : "hover:bg-slate-50 border border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    activeSidebarMenu === "cases" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
-                  }`}>
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 leading-snug">
-                      จัดการเอกสารและความรู้
-                    </div>
-                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                      นำเข้า Versioning, Workflow และ OCR
-                    </div>
-                  </div>
-                </div>
-                {activeSidebarMenu === "cases" && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                )}
-              </button>
-
-              {/* Menu Item 2: External Integrations */}
-              <button
-                onClick={() => setActiveSidebarMenu("integrations")}
-                className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group ${
-                  activeSidebarMenu === "integrations"
-                    ? "bg-[#EBF5FF] border border-blue-200/80 shadow-2xs"
-                    : "hover:bg-slate-50 border border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    activeSidebarMenu === "integrations" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
-                  }`}>
-                    <Database className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 leading-snug">
-                      แหล่งข้อมูลเชื่อมต่อ
-                    </div>
-                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                      LIMS DB, File Share, Search Scope
-                    </div>
-                  </div>
-                </div>
-                {activeSidebarMenu === "integrations" && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                )}
-              </button>
-
-              {/* Menu Item 3: Workflow & SLA */}
-              <button
-                onClick={() => setActiveSidebarMenu("workflow")}
-                className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group ${
-                  activeSidebarMenu === "workflow"
-                    ? "bg-[#EBF5FF] border border-blue-200/80 shadow-2xs"
-                    : "hover:bg-slate-50 border border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    activeSidebarMenu === "workflow" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
-                  }`}>
-                    <Layers className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 leading-snug">
-                      RAG & Vector Database
-                    </div>
-                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                      Milvus/Qdrant, Chunking, Re-rank
-                    </div>
-                  </div>
-                </div>
-                {activeSidebarMenu === "workflow" && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                )}
-              </button>
-
-              {/* Menu Item 4: AI Model & Routing */}
-              <button
-                onClick={() => setActiveSidebarMenu("roles")}
-                className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group ${
-                  activeSidebarMenu === "roles"
-                    ? "bg-[#EBF5FF] border border-blue-200/80 shadow-2xs"
-                    : "hover:bg-slate-50 border border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    activeSidebarMenu === "roles" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
-                  }`}>
-                    <Cpu className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 leading-snug">
-                      โมเดล AI และ Routing
-                    </div>
-                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                      On-Prem/Cloud, Prompt, Quota
-                    </div>
-                  </div>
-                </div>
-                {activeSidebarMenu === "roles" && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                )}
-              </button>
-
-              {/* Menu Item 5: Analytics & Security */}
-              <button
-                onClick={() => setActiveSidebarMenu("security")}
-                className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group ${
-                  activeSidebarMenu === "security"
-                    ? "bg-[#EBF5FF] border border-blue-200/80 shadow-2xs"
-                    : "hover:bg-slate-50 border border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    activeSidebarMenu === "security" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
-                  }`}>
-                    <BarChart3 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 leading-snug">
-                      สถิติและความปลอดภัย
-                    </div>
-                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                      Dashboard, Export, RBAC, DLP
-                    </div>
-                  </div>
-                </div>
-                {activeSidebarMenu === "security" && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                )}
-              </button>
-
-              {/* Menu Item 6: Chatbot Settings */}
-              <button
-                onClick={() => setActiveSidebarMenu("settings")}
-                className={`w-full text-left p-3 rounded-2xl transition-all flex items-center justify-between group ${
-                  activeSidebarMenu === "settings"
-                    ? "bg-[#EBF5FF] border border-blue-200/80 shadow-2xs"
-                    : "hover:bg-slate-50 border border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    activeSidebarMenu === "settings" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
-                  }`}>
-                    <Settings className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 leading-snug">
-                      ตั้งค่าแชทบอท & Widget
-                    </div>
-                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                      Persona, ประกาศ, Embed Code
-                    </div>
-                  </div>
-                </div>
-                {activeSidebarMenu === "settings" && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                )}
-              </button>
-
-            </nav>
-          </div>
-
-          {/* Bottom Floating Engine Card */}
-          <div className="p-3 bg-white rounded-2xl border border-slate-200 shadow-2xs flex items-center gap-3 mt-4">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 font-bold text-xs">
-              GIT
-            </div>
-            <div>
-              <div className="text-xs font-bold text-slate-900 leading-tight">GIT AI Engine v2.5</div>
-              <div className="text-[10px] text-slate-400">Milvus & BGE-M3 Connected</div>
-            </div>
-          </div>
-
+      <div className="mx-auto flex min-h-[calc(100vh-65px)] max-w-[1680px]">
+        <aside className="hidden w-72 shrink-0 border-r border-slate-200 bg-white p-4 lg:sticky lg:top-16 lg:flex lg:h-[calc(100vh-64px)] lg:flex-col lg:overflow-y-auto">
+          <div className="px-3 pb-3 pt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">การกำกับระบบ</div>
+          <AdminNavigation activeView={activeView} onSelect={setActiveView} />
+          <div className="mt-auto rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><div className="flex items-center gap-2 text-xs font-bold text-emerald-900"><ShieldCheck className="h-4 w-4" /> Security baseline ผ่าน</div><div className="mt-2 text-[10px] leading-5 text-emerald-700">2FA 100% · Session policy v4 · ไม่มี Critical finding</div></div>
         </aside>
 
-        {/* MAIN CONTENT WORKSPACE AREA */}
-        <main className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6">
-          
-          {/* Breadcrumb & Top Action */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">จัดการเอกสารและความรู้</h2>
-              <div className="text-[11px] text-slate-400">นำเข้า Versioning, Workflow และ OCR</div>
-            </div>
+        <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8">
+          <div className="mb-5 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-sm lg:hidden"><AdminNavigation activeView={activeView} onSelect={setActiveView} horizontal /></div>
+          <div className="mb-3 flex items-center gap-2 text-[10px] text-slate-400"><span>ผู้ดูแลระบบ</span><ChevronRight className="h-3.5 w-3.5" /><span className="font-semibold text-[#1B3F8B]">{meta.title}</span></div>
+          <section className="mb-5 rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm sm:px-6">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between"><div><div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-700"><span className="h-1.5 w-1.5 rounded-full bg-[#FFD600]" /> {meta.eyebrow}</div><h1 className="mt-2 text-xl font-bold tracking-tight text-[#1B3F8B] sm:text-2xl">{meta.title}</h1><p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">{meta.description}</p></div><button type="button" onClick={() => activeView === "overview" || activeView === "cases" ? setIsNewComplaintOpen(true) : notify(activeView === "users" ? "เปิดแบบฟอร์มเพิ่มผู้ใช้งานแล้ว" : "สร้างรายการฉบับร่างใหม่แล้ว")} className="btn-primary w-fit"><Plus className="h-4 w-4" /> {activeView === "overview" || activeView === "cases" ? "บันทึกเรื่องใหม่" : activeView === "users" ? "เพิ่มผู้ใช้งาน" : "สร้างรายการใหม่"}</button></div>
+          </section>
 
-            <button
-              onClick={handleTriggerSync}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold transition-all shadow-xs"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>ทดสอบ Chatbot AI</span>
-            </button>
-          </div>
-
-          {syncMessage && (
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>{syncMessage}</span>
-            </div>
-          )}
-
-          {/* Large Title Section & Action Buttons */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                Knowledge Base & Document Management (ระบบบริหารจัดการเอกสารและความรู้)
-              </h1>
-              <p className="text-xs text-slate-500 font-light max-w-3xl leading-relaxed">
-                นำเข้าเอกสาร PDF, Office, รูปภาพ, วิดีโอ ควบคุมการแบ่ง Chunking, จัดการเวอร์ชัน, ตรวจสอบเอกสารซ้ำ, อนุมัติ Workflow และสิทธิ์การเข้าถึง (RBAC)
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2.5 flex-shrink-0">
-              <button
-                onClick={() => alert("ระบบกำลังประมวลผลการนำเข้าข้อมูลแบบ Batch")}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors shadow-2xs"
-              >
-                <Download className="w-3.5 h-3.5 text-slate-500" />
-                <span>Batch Upload</span>
-              </button>
-
-              <button
-                onClick={() => setIsNewModalOpen(true)}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#0D9488] hover:bg-[#0f766e] text-white font-bold text-xs transition-all shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                <span>นำเข้าเอกสารใหม่ (Upload Document)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 4 KPI METRIC STAT CARDS (EXACT STYLE FROM SCREENSHOT) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            {/* Card 1: Total Documents */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500">เอกสารทั้งหมด</span>
-                <FileText className="w-4 h-4 text-emerald-500" />
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-bold text-slate-900">{totalCases}</div>
-                <div className="text-[11px] font-bold text-emerald-600 mt-1">พร้อมใช้งานในระบบ RAG</div>
-              </div>
-            </div>
-
-            {/* Card 2: Vector Chunks */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500">Vector Chunks</span>
-                <Layers className="w-4 h-4 text-purple-500" />
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-bold text-slate-900">427</div>
-                <div className="text-[11px] font-bold text-purple-600 mt-1">BGE-M3 Multilingual Vector</div>
-              </div>
-            </div>
-
-            {/* Card 3: Waiting Approval */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500">รอตรวจสอบ/อนุมัติ</span>
-                <Clock className="w-4 h-4 text-amber-500" />
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-bold text-amber-600">{nearDueCases}</div>
-                <div className="text-[11px] font-bold text-amber-600 mt-1">Workflow Approval Queue</div>
-              </div>
-            </div>
-
-            {/* Card 4: Security Scan */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500">สแกนความปลอดภัย</span>
-                <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              </div>
-              <div>
-                <div className="text-2xl sm:text-3xl font-bold text-emerald-600">100% Clean</div>
-                <div className="text-[11px] font-bold text-emerald-600 mt-1">Antivirus & DLP Verified</div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* TABS ROW (EXACT STYLE FROM SCREENSHOT) */}
-          <div className="flex items-center gap-3 overflow-x-auto pb-1 text-xs">
-            <button
-              onClick={() => setActiveTab("all")}
-              className={`px-4 py-2 rounded-full font-bold transition-all ${
-                activeTab === "all"
-                  ? "bg-[#E6FFFA] text-[#0D9488] border border-[#0D9488]/30 shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              คลังเอกสารทั้งหมด ({totalCases})
-            </button>
-
-            <button
-              onClick={() => setActiveTab("pending")}
-              className={`px-4 py-2 rounded-full font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === "pending"
-                  ? "bg-[#E6FFFA] text-[#0D9488] border border-[#0D9488]/30 shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <span>รอการตรวจสอบ/อนุมัติ (Workflow)</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-bold">
-                {nearDueCases}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("overdue")}
-              className={`px-4 py-2 rounded-full font-bold transition-all flex items-center gap-1.5 ${
-                activeTab === "overdue"
-                  ? "bg-[#E6FFFA] text-[#0D9488] border border-[#0D9488]/30 shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <span>เกินกำหนดเวลา SLA</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
-                {overdueCases}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("audit")}
-              className={`px-4 py-2 rounded-full font-bold transition-all ${
-                activeTab === "audit"
-                  ? "bg-[#E6FFFA] text-[#0D9488] border border-[#0D9488]/30 shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              ประวัติและ Audit Logs (3)
-            </button>
-          </div>
-
-          {/* SEARCH & FILTER CONTROLS BAR (EXACT STYLE FROM SCREENSHOT) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            
-            {/* Search Input Bar (Spans 2 cols on lg) */}
-            <div className="lg:col-span-2 relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-              <input
-                type="text"
-                placeholder="ค้นหาเอกสารตามชื่อ, ไฟล์, หรือ Tags..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0D9488] shadow-2xs"
-              />
-            </div>
-
-            {/* Dropdown 1: Category */}
-            <div className="relative">
-              <select
-                value={selectedMission}
-                onChange={(e) => setSelectedMission(e.target.value)}
-                className="w-full py-2.5 px-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#0D9488] shadow-2xs appearance-none cursor-pointer"
-              >
-                <option value="ALL">ทุกหมวดหมู่ (All)</option>
-                <option value="การจัดการเลือกตั้ง">การจัดการเลือกตั้ง</option>
-                <option value="สืบสวนและไต่สวน">สืบสวนและไต่สวน</option>
-                <option value="พรรคการเมือง">พรรคการเมือง</option>
-                <option value="บริหารทั่วไป">บริหารทั่วไป</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3.5 pointer-events-none" />
-            </div>
-
-            {/* Dropdown 2: Status */}
-            <div className="relative">
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full py-2.5 px-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#0D9488] shadow-2xs appearance-none cursor-pointer"
-              >
-                <option value="ALL">ทุกสถานะ (All Status)</option>
-                <option value="NORMAL">ปกติ (Normal)</option>
-                <option value="NEAR_DUE">ใกล้ครบกำหนด (Near Due)</option>
-                <option value="OVERDUE">เกิน SLA (Overdue)</option>
-                <option value="COMPLETED">เสร็จสิ้น (Completed)</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3.5 pointer-events-none" />
-            </div>
-
-            {/* Dropdown 3: Privacy */}
-            <div className="relative">
-              <select
-                value={selectedPrivacy}
-                onChange={(e) => setSelectedPrivacy(e.target.value)}
-                className="w-full py-2.5 px-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#0D9488] shadow-2xs appearance-none cursor-pointer"
-              >
-                <option value="ALL">ทุกชั้นความลับ</option>
-                <option value="INTERNAL">INTERNAL</option>
-                <option value="CONFIDENTIAL">CONFIDENTIAL</option>
-                <option value="PUBLIC">PUBLIC</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-3.5 pointer-events-none" />
-            </div>
-
-          </div>
-
-          {/* 7. ENTERPRISE DATA TABLE (EXACT LAYOUT & PILLS FROM SCREENSHOT) */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                
-                {/* Table Header */}
-                <thead className="bg-[#F8FAFC] text-slate-500 border-b border-slate-200 text-[11px] font-bold">
-                  <tr>
-                    <th className="p-4">รหัส / ชื่อเอกสาร</th>
-                    <th className="p-4">หมวดหมู่ & หน่วยงาน</th>
-                    <th className="p-4 text-center">ชั้นความลับ</th>
-                    <th className="p-4 text-center">เวอร์ชัน</th>
-                    <th className="p-4 text-center">สถานะ INDEXING</th>
-                    <th className="p-4 text-center">สถานะ WORKFLOW</th>
-                    <th className="p-4">อายุเอกสาร (RETENTION)</th>
-                    <th className="p-4 text-center">การจัดการ (ACTIONS)</th>
-                  </tr>
-                </thead>
-
-                {/* Table Body */}
-                <tbody className="divide-y divide-slate-100">
-                  {filteredCases.slice(0, 8).map((c, index) => (
-                    <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
-                      
-                      {/* Column 1: Document Icon + Title + Meta */}
-                      <td className="p-4 max-w-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <FileText className="w-4 h-4" />
-                          </div>
-                          <div className="space-y-1">
-                            <div 
-                              onClick={() => setSelectedCase(c)}
-                              className="font-bold text-slate-900 hover:text-[#0D9488] cursor-pointer transition-colors leading-snug"
-                            >
-                              {c.allegation}: {c.details.substring(0, 48)}...
-                            </div>
-                            <div className="text-[10px] text-slate-400 flex items-center gap-1.5">
-                              <span className="font-mono">{c.caseNumber}</span>
-                              <span>·</span>
-                              <span>{c.missionGroup} ({c.province})</span>
-                            </div>
-                            <div className="flex items-center gap-1 text-[10px] text-emerald-600 font-semibold">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                              <span>Clean · DXC Linkage Verified</span>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Column 2: Category & Dept */}
-                      <td className="p-4 text-xs text-slate-700">
-                        <div className="font-semibold text-slate-800">{c.missionGroup}</div>
-                        <div className="text-[10px] text-slate-400">สนง.กกต.จว. {c.province} ({c.constituency})</div>
-                      </td>
-
-                      {/* Column 3: Privacy Pill */}
-                      <td className="p-4 text-center">
-                        <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">
-                          {index % 2 === 0 ? "INTERNAL" : "PUBLIC"}
-                        </span>
-                      </td>
-
-                      {/* Column 4: Version Pill */}
-                      <td className="p-4 text-center">
-                        <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-semibold flex items-center justify-center gap-1">
-                          <Clock className="w-3 h-3 text-slate-400" />
-                          <span>v{index === 0 ? "2.4" : index === 1 ? "3.1" : "1.0"}</span>
-                        </span>
-                      </td>
-
-                      {/* Column 5: Indexing Status Pill */}
-                      <td className="p-4 text-center">
-                        <span className="px-3 py-1 rounded-full bg-[#E6FFFA] text-[#0D9488] border border-[#0D9488]/30 text-[10px] font-bold inline-flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>{142 - index * 12} Chunks</span>
-                        </span>
-                      </td>
-
-                      {/* Column 6: Workflow Dropdown Pill */}
-                      <td className="p-4 text-center">
-                        <div className="inline-flex items-center justify-between gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-                          <span>อนุมัติ (Approved)</span>
-                          <ChevronDown className="w-3 h-3 text-emerald-600" />
-                        </div>
-                      </td>
-
-                      {/* Column 7: Retention / SLA */}
-                      <td className="p-4 text-xs text-slate-700">
-                        <div className="font-semibold text-slate-800">
-                          {c.slaStatus === "OVERDUE" ? "เกินกำหนด SLA" : `เหลือ ${c.remainingDays} วัน`}
-                        </div>
-                        <div className="text-[10px] text-slate-400">
-                          หมดอายุ 2569-03-15
-                        </div>
-                      </td>
-
-                      {/* Column 8: Actions */}
-                      <td className="p-4 text-center">
-                        <div className="flex items-center justify-center gap-2 text-slate-400">
-                          <button
-                            onClick={() => setSelectedCase(c)}
-                            title="แก้ไข / ดูสำนวน"
-                            className="p-1 hover:text-[#0D9488] transition-colors"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={handleTriggerSync}
-                            title="Sync ข้อมูล"
-                            className="p-1 hover:text-blue-600 transition-colors"
-                          >
-                            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-                          </button>
-                          <button
-                            onClick={() => alert(`ลบสำนวน: ${c.caseNumber}`)}
-                            title="ลบเอกสาร"
-                            className="p-1 hover:text-rose-600 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-
-                    </tr>
-                  ))}
-                </tbody>
-
-              </table>
-            </div>
-
-            {/* Table Pagination Footer */}
-            <div className="p-4 bg-[#F8FAFC] border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-              <div>
-                แสดง 8 จากทั้งหมด <strong className="text-slate-800">{filteredCases.length}</strong> รายการ
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-50">
-                  ย้อนกลับ
-                </button>
-                <span className="px-3 py-1 rounded-lg bg-[#0D9488] text-white font-bold">1</span>
-                <button className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">
-                  2
-                </button>
-                <button className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">
-                  ถัดไป
-                </button>
-              </div>
-            </div>
-          </div>
-
+          {activeView === "overview" && <DashboardView cases={cases} roleId="admin" onSelectCase={setSelectedCase} onViewAllCases={() => { setCaseStatusFilter("ALL"); setActiveView("cases"); }} onFilterStatus={(status) => { setCaseStatusFilter(status); setActiveView("cases"); }} />}
+          {activeView === "cases" && <CaseListView cases={cases} onSelectCase={setSelectedCase} openNewModal={() => setIsNewComplaintOpen(true)} statusFilter={caseStatusFilter} setStatusFilter={setCaseStatusFilter} />}
+          {activeView === "users" && <UsersPanel cases={cases} onNotify={notify} />}
+          {activeView === "workflow" && <WorkflowPanel onNotify={notify} />}
+          {activeView === "master" && <MasterDataPanel cases={cases} />}
+          {activeView === "integrations" && <IntegrationsPanel onNotify={notify} />}
+          {activeView === "security" && <SecurityPanel />}
         </main>
-
       </div>
-
-      {/* Electronic Case File Modal (e-Dossier) */}
-      {selectedCase && (
-        <CaseDetailModal
-          caseItem={selectedCase}
-          onClose={() => setSelectedCase(null)}
-        />
-      )}
-
-      {/* New Complaint Form Modal */}
-      {isNewModalOpen && (
-        <NewComplaintForm
-          onClose={() => setIsNewModalOpen(false)}
-          onAddCase={handleAddCase}
-        />
-      )}
-
+      {selectedCase && <CaseDetailModal caseItem={selectedCase} onClose={() => setSelectedCase(null)} />}
+      {isNewComplaintOpen && <NewComplaintForm mode="officer" onClose={() => setIsNewComplaintOpen(false)} onAddCase={(newCase) => setCases((currentCases) => [newCase, ...currentCases])} />}
     </div>
   );
 }
+
+function AdminNavigation({ activeView, onSelect, horizontal = false }: { activeView: AdminView; onSelect: (view: AdminView) => void; horizontal?: boolean }) {
+  return <nav className={horizontal ? "flex min-w-max gap-1" : "space-y-1.5"} aria-label="เมนูผู้ดูแลระบบ">{NAV_ITEMS.map((item) => { const Icon = item.icon; const active = item.id === activeView; return <button key={item.id} type="button" onClick={() => onSelect(item.id)} className={`${horizontal ? "min-w-40" : "w-full"} flex min-h-12 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${active ? "bg-[#1B3F8B] text-white shadow-sm" : "text-slate-600 hover:bg-slate-50 hover:text-[#1B3F8B]"}`}><Icon className={`h-[18px] w-[18px] shrink-0 ${active ? "text-white" : "text-slate-400"}`} /><span className="min-w-0 flex-1 truncate text-xs font-semibold">{item.label}</span>{active && !horizontal && <ChevronRight className="h-4 w-4 text-white/70" />}</button>; })}</nav>;
+}
+
+function UsersPanel({ cases, onNotify }: { cases: ComplaintItem[]; onNotify: (text: string) => void }) {
+  const officerNames = Array.from(new Set(cases.map((item) => item.officer)));
+  const users = officerNames.slice(0, 8).map((name) => {
+    const assignedCases = cases.filter((item) => item.officer === name);
+    const sample = assignedCases[0];
+    return { name, role: getRoleForStage(sample.stageId), office: sample.currentSection === "สนง.กกต.จว." ? `สนง.กกต.จว. ${sample.province}` : sample.currentSection, caseCount: assignedCases.length };
+  });
+  return <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="flex items-center gap-2 text-sm font-bold"><Users className="h-4 w-4 text-blue-700" /> เจ้าหน้าที่ในชุดข้อมูล {officerNames.length} บัญชี</h2><p className="mt-1 text-[10px] text-slate-500">เชื่อมโยงจากผู้รับผิดชอบในทะเบียนเรื่องร้องเรียน {cases.length} เรื่อง</p></div><label className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input placeholder="ค้นหาชื่อ บทบาท หรือหน่วยงาน" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs outline-none focus:border-blue-500 sm:w-72" /></label></div><div className="divide-y divide-slate-100">{users.map(({ name, role, office, caseCount }) => <div key={name} className="grid gap-3 p-4 sm:grid-cols-[1.1fr_1.2fr_1.2fr_auto] sm:items-center"><div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-800">{name.charAt(0)}</span><div><div className="text-xs font-bold">{name}</div><div className="mt-0.5 text-[9px] text-slate-400">Verified · OTP enabled</div></div></div><div className="text-[11px] text-slate-600">{role}</div><div className="text-[11px] text-slate-500">{office}<div className="mt-1 text-[9px] text-slate-400">รับผิดชอบ {caseCount} เรื่อง</div></div><div className="flex items-center justify-between gap-2"><span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-bold text-emerald-700">ใช้งาน</span><button type="button" onClick={() => onNotify(`เปิดสิทธิ์ของ ${name}`)} aria-label={`จัดการสิทธิ์ ${name}`} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-blue-700"><KeyRound className="h-4 w-4" /></button></div></div>)}</div><div className="border-t border-slate-100 bg-slate-50 p-4 text-[10px] text-slate-500"><LockKeyhole className="mr-1 inline h-3.5 w-3.5 text-emerald-600" /> บทบาทวินิจฉัย อนุมัติขยายเวลา และเผยแพร่ Workflow ต้องผ่าน dual approval</div></section>;
+}
+
+function getRoleForStage(stageId: number) {
+  if (stageId <= 1) return "พนักงานตรวจคำร้อง";
+  if (stageId === 2 || stageId === 4) return "ผอ.สนง.กกต.จว.";
+  if (stageId === 3) return "คณะกรรมการสืบสวนและไต่สวน";
+  if (stageId <= 6) return "ผู้ตรวจสำนวนส่วนกลาง";
+  if (stageId === 7) return "เลขาคณะอนุวินิจฉัย";
+  if (stageId === 8) return "กกต.";
+  return "ลธ.กกต. / งานแจ้งผล";
+}
+
+function WorkflowPanel({ onNotify }: { onNotify: (text: string) => void }) {
+  const versions = [["ร้องคัดค้านการเลือกตั้ง สส.", "v12", "เผยแพร่", "26 ส.ค. 2569"], ["ร้องคัดค้านการเลือกตั้งท้องถิ่น", "v8", "เผยแพร่", "18 ส.ค. 2569"], ["สำนวนตรวจส่วนกลาง", "v5-draft", "ฉบับร่าง", "วันนี้ 11:20"]];
+  return <div className="space-y-5"><div className="grid gap-3 sm:grid-cols-4"><AdminMetric label="Workflow เผยแพร่" value="2" /><AdminMetric label="ขั้นตอนกระบวนงาน" value={String(WORKFLOW_STEPS.length)} /><AdminMetric label="กฎ SLA ที่กำหนด" value={String(WORKFLOW_STEPS.filter((step) => step.slaDays !== null).length)} /><AdminMetric label="รออนุมัติ" value="1" /></div><section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-sm font-bold">Workflow versions</h2><div className="mt-4 space-y-3">{versions.map(([name, version, status, updated]) => <div key={name} className="grid gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center"><div><div className="text-xs font-bold">{name}</div><div className="mt-1 text-[10px] text-slate-500">ปรับปรุง {updated}</div></div><span className="font-kanit text-[10px] font-bold text-blue-700">{version}</span><span className={`rounded-full px-2.5 py-1 text-[9px] font-bold ${status === "เผยแพร่" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{status}</span><button type="button" onClick={() => onNotify(`เปิด ${name} ใน Workflow designer`)} className="btn-secondary">เปิด Designer</button></div>)}</div></section><section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-sm font-bold">SLA อ้างอิงจาก Workflow กลาง</h2><div className="mt-4 grid gap-3 sm:grid-cols-3"><RuleCard title="ตรวจคำร้อง" value="3 วัน" escalation="แจ้งเตือนเมื่อเหลือ 1 วัน" /><RuleCard title="สืบสวนและไต่สวน" value="20 / 90 วัน" escalation="ขยาย 15 + 15 วัน" /><RuleCard title="จัดทำคำวินิจฉัย" value="60 วัน" escalation="แจ้งเตือนที่ 45 วัน" /></div></section></div>;
+}
+
+function MasterDataPanel({ cases }: { cases: ComplaintItem[] }) { const provinces = new Set(cases.map((item) => item.province)).size; const districts = new Set(cases.map((item) => `${item.province}:${item.district}`)).size; const electionTypes = new Set(cases.map((item) => item.electionType)).size; const allegations = new Set(cases.map((item) => item.allegation)).size; return <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"><MasterCard title="จังหวัดและอำเภอในชุดข้อมูล" count={`${provinces} จังหวัด · ${districts} อำเภอ`} status="POC 300 เรื่อง" /><MasterCard title="เขตเลือกตั้ง" count={`${new Set(cases.map((item) => item.constituency)).size} รูปแบบเขตในชุดข้อมูล`} status="PRAXTICOL" /><MasterCard title="ประเภทการเลือกตั้ง" count={`${electionTypes} ประเภทที่มีข้อมูล`} status="ใช้งาน" /><MasterCard title="ข้อกล่าวหา" count={`${allegations} รายการในชุดข้อมูล`} status="ใช้งาน" /><MasterCard title="แบบฟอร์มมาตรฐาน" count="สตว.1 · สตว.1/1" status="ตาม Workflow" /><MasterCard title="ปฏิทินวันทำการ" count="ปี 2569" status="ประกาศแล้ว" /></div>; }
+
+function IntegrationsPanel({ onNotify }: { onNotify: (text: string) => void }) { const items = [["DXC / Linkage Center", "ตรวจสอบตัวตนและทะเบียนราษฎร", "128 ms"], ["e-Saraban", "รับ-ส่งหนังสือและเลขสารบรรณ", "214 ms"], ["PRAXTICOL", "เขตเลือกตั้ง ผู้สมัคร และผลการเลือกตั้ง", "176 ms"]]; return <div className="grid gap-4 lg:grid-cols-3">{items.map(([name, description, latency]) => <article key={name} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><Database className="h-5 w-5" /></span><span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[9px] font-bold text-emerald-700">Online</span></div><h2 className="mt-4 text-sm font-bold">{name}</h2><p className="mt-2 min-h-10 text-xs leading-5 text-slate-500">{description}</p><div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-[10px] text-slate-500"><span>Response time</span><span className="font-kanit font-bold text-slate-800">{latency}</span></div><button type="button" onClick={() => onNotify(`ตรวจสอบ ${name} สำเร็จ`)} className="btn-secondary mt-4 w-full"><RefreshCw className="h-4 w-4" /> ตรวจสอบการเชื่อมต่อ</button></article>)}</div>; }
+
+function SecurityPanel() { return <div className="grid gap-5 lg:grid-cols-[1fr_360px]"><section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="flex items-center gap-2 text-sm font-bold"><ShieldCheck className="h-5 w-5 text-emerald-600" /> Security controls</h2><div className="mt-5 grid gap-3 sm:grid-cols-2"><SecurityControl title="Authentication" value="Password + OTP / ThaID" /><SecurityControl title="Session" value="Auto logout 15 นาที" /><SecurityControl title="Data encryption" value="TLS 1.3 / AES-256" /><SecurityControl title="Data masking" value="เปิดใช้ทุกบทบาท" /><SecurityControl title="Audit retention" value="รออนุมัติจาก DPO" /><SecurityControl title="OWASP Top 10" value="ไม่พบ Critical finding" /></div></section><aside className="rounded-2xl bg-[#1B3F8B] p-5 text-white shadow-sm"><div className="flex items-center justify-between"><h2 className="text-sm font-bold">Audit health</h2><FileClock className="h-5 w-5 text-blue-300" /></div><div className="mt-6 text-4xl font-bold text-emerald-400">100%</div><p className="mt-2 text-xs leading-5 text-slate-400">เหตุการณ์เปลี่ยนสถานะใน 24 ชั่วโมงมี actor, role, timestamp และ correlation ID ครบถ้วน</p><div className="mt-5 space-y-3"><HealthRow label="Events วันนี้" value="18,426" /><HealthRow label="Failed writes" value="0" /><HealthRow label="Integrity check" value="ผ่าน 13:00" /></div></aside></div>; }
+
+function AdminMetric({ label, value }: { label: string; value: string }) { return <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="text-[10px] font-bold uppercase text-slate-400">{label}</div><div className="mt-2 text-2xl font-bold text-blue-800">{value}</div></div>; }
+function RuleCard({ title, value, escalation }: { title: string; value: string; escalation: string }) { return <div className="rounded-xl border border-slate-200 bg-slate-50 p-4"><div className="text-xs font-bold">{title}</div><div className="mt-2 text-xl font-bold text-blue-800">{value}</div><div className="mt-1 text-[10px] text-slate-500">{escalation}</div></div>; }
+function MasterCard({ title, count, status }: { title: string; count: string; status: string }) { return <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><Settings2 className="h-5 w-5" /></span><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-bold text-slate-600">{status}</span></div><h2 className="mt-4 text-sm font-bold">{title}</h2><p className="mt-2 text-xs text-slate-500">{count}</p><button type="button" className="mt-4 text-[11px] font-bold text-blue-700">จัดการข้อมูล <ChevronRight className="inline h-4 w-4" /></button></article>; }
+function SecurityControl({ title, value }: { title: string; value: string }) { return <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3"><div><div className="text-xs font-bold">{title}</div><div className="mt-1 text-[10px] text-slate-500">{value}</div></div><CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" /></div>; }
+function HealthRow({ label, value }: { label: string; value: string }) { return <div className="flex items-center justify-between rounded-xl bg-white/5 px-3 py-2.5 text-xs"><span className="text-slate-400">{label}</span><span className="font-bold text-white">{value}</span></div>; }

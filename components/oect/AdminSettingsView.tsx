@@ -8,17 +8,17 @@ import {
   Sliders, 
   Key, 
   Server, 
-  Activity, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Database, 
-  FileText,
-  RefreshCw,
-  Cpu
+  Activity
 } from "lucide-react";
 
 export default function AdminSettingsView() {
   const [activeTab, setActiveTab] = useState<"roles" | "sla" | "security" | "integrations">("roles");
+  const settingsTabs: Array<{ id: "roles" | "sla" | "security" | "integrations"; label: string }> = [
+    { id: "roles", label: "👥 สิทธิ์ผู้ใช้ (5 ระดับ)" },
+    { id: "sla", label: "⏱️ ตั้งค่า SLA" },
+    { id: "security", label: "🔒 ความปลอดภัย & Logs" },
+    { id: "integrations", label: "🔗 เชื่อมโยงระบบภายนอก" },
+  ];
 
   const rolesMatrix = [
     { role: "1. พนักงานส่วนภูมิภาค", intake: "✓", approve: "✗", ruling: "✗", viewGlobal: "✗", trackOwn: "✓", admin: "✗" },
@@ -42,7 +42,7 @@ export default function AdminSettingsView() {
       <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-1.5 h-4 bg-[#173B6B] rounded-full" />
+            <span className="w-1.5 h-4 bg-[#1B3F8B] rounded-full" />
             <h2 className="text-base sm:text-lg font-semibold text-[#1A202C]">
               การจัดการระบบ ความปลอดภัย และการเชื่อมโยงข้อมูล (Admin & Governance)
             </h2>
@@ -54,18 +54,13 @@ export default function AdminSettingsView() {
 
         {/* Subtab Switcher */}
         <div className="flex items-center gap-1.5 overflow-x-auto">
-          {[
-            { id: "roles", label: "👥 สิทธิ์ผู้ใช้ (5 ระดับ)" },
-            { id: "sla", label: "⏱️ ตั้งค่า SLA" },
-            { id: "security", label: "🔒 ความปลอดภัย & Logs" },
-            { id: "integrations", label: "🔗 เชื่อมโยงระบบภายนอก" },
-          ].map((tab) => (
+          {settingsTabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.id
-                  ? "bg-[#173B6B] text-white shadow-xs"
+                  ? "bg-[#1B3F8B] text-white shadow-xs"
                   : "bg-[#F7FAFC] text-[#4A5568] hover:bg-[#EDF2F7]"
               }`}
             >
@@ -80,7 +75,7 @@ export default function AdminSettingsView() {
         <div className="bg-white rounded-3xl border border-[#E2E8F0] shadow-xs p-6 space-y-4 animate-in fade-in-50 duration-150">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-[#1A202C] flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#1E4E8C]" />
+              <Users className="w-4 h-4 text-[#1B3F8B]" />
               <span>ตารางสิทธิ์การเข้าถึงตามบทบาท (Role-Based Access Control - RBAC)</span>
             </h3>
             <span className="text-xs text-[#718096]">5 ระดับผู้ใช้งาน</span>
@@ -106,7 +101,7 @@ export default function AdminSettingsView() {
                     <td className="p-3.5 text-center">{r.intake}</td>
                     <td className="p-3.5 text-center">{r.approve}</td>
                     <td className="p-3.5 text-center">{r.ruling}</td>
-                    <td className="p-3.5 text-center font-medium text-[#1E4E8C]">{r.viewGlobal}</td>
+                    <td className="p-3.5 text-center font-medium text-[#1B3F8B]">{r.viewGlobal}</td>
                     <td className="p-3.5 text-center text-emerald-600">{r.trackOwn}</td>
                     <td className="p-3.5 text-center">{r.admin}</td>
                   </tr>
@@ -122,10 +117,10 @@ export default function AdminSettingsView() {
         <div className="bg-white rounded-3xl border border-[#E2E8F0] shadow-xs p-6 space-y-4 animate-in fade-in-50 duration-150">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-[#1A202C] flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-[#1E4E8C]" />
+              <Sliders className="w-4 h-4 text-[#1B3F8B]" />
               <span>การตั้งค่ากรอบเวลาและระยะเวลา SLA ในแต่ละขั้นตอน</span>
             </h3>
-            <button className="px-3 py-1 bg-[#173B6B] text-white text-xs rounded-lg font-medium">
+            <button className="px-3 py-1 bg-[#1B3F8B] text-white text-xs rounded-lg font-medium">
               บันทึกการเปลี่ยนแปลง
             </button>
           </div>
@@ -209,7 +204,7 @@ export default function AdminSettingsView() {
             </div>
 
             <div className="bg-white p-5 rounded-3xl border border-[#E2E8F0] shadow-xs space-y-2">
-              <div className="flex items-center gap-2 text-indigo-600 text-xs font-semibold">
+              <div className="flex items-center gap-2 text-blue-600 text-xs font-semibold">
                 <Key className="w-4 h-4" />
                 <span>ThaID / OTP 2FA Authentication</span>
               </div>
@@ -223,7 +218,7 @@ export default function AdminSettingsView() {
           <div className="bg-white p-6 rounded-3xl border border-[#E2E8F0] shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-[#1A202C] flex items-center gap-2">
-                <Activity className="w-4 h-4 text-[#1E4E8C]" />
+                <Activity className="w-4 h-4 text-[#1B3F8B]" />
                 <span>บันทึกประวัติการเข้าถึงข้อมูล (Audit Trail & Activity Logs - ROPA)</span>
               </h3>
               <span className="text-xs text-[#718096]">บันทึกไม่สามารถลบล้างได้</span>
@@ -247,7 +242,7 @@ export default function AdminSettingsView() {
                       <td className="p-3 text-[#718096]">{log.time}</td>
                       <td className="p-3 font-medium text-[#1A202C]">{log.user}</td>
                       <td className="p-3 text-[#2D3748]">{log.action}</td>
-                      <td className="p-3 font-semibold text-[#1E4E8C]">{log.caseNum}</td>
+                      <td className="p-3 font-semibold text-[#1B3F8B]">{log.caseNum}</td>
                       <td className="p-3 text-[#718096]">{log.ip}</td>
                       <td className="p-3 text-center">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${log.status === "SUCCESS" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
@@ -269,7 +264,7 @@ export default function AdminSettingsView() {
         <div className="bg-white rounded-3xl border border-[#E2E8F0] shadow-xs p-6 space-y-4 animate-in fade-in-50 duration-150">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-[#1A202C] flex items-center gap-2">
-              <Server className="w-4 h-4 text-[#1E4E8C]" />
+              <Server className="w-4 h-4 text-[#1B3F8B]" />
               <span>สถานะการเชื่อมโยงระบบภายนอก (External System Integrations)</span>
             </h3>
             <span className="text-xs text-emerald-600 font-medium">● ระบบทำงานปกติทุกช่องทาง</span>

@@ -6,51 +6,26 @@ import {
   AlertCircle, 
   Clock, 
   CheckCircle2, 
-  TrendingUp, 
   Filter, 
   MapPin, 
   Layers, 
   ShieldAlert, 
   BarChart3, 
-  PieChart, 
   ArrowUpRight,
   ChevronRight,
-  Scale,
-  Users,
-  Vote
+  Inbox
 } from "lucide-react";
-
-interface ComplaintItem {
-  id: number;
-  electionType: string;
-  announcementDate: string;
-  caseNumber: string;
-  electionDate: string;
-  receivedDate: string;
-  constituency: string;
-  district: string;
-  province: string;
-  officer: string;
-  complainants: string;
-  respondent: string;
-  allegation: string;
-  details: string;
-  missionGroup: string;
-  currentStage: string;
-  currentSection: string;
-  stageId: number;
-  slaDays: number;
-  remainingDays: number;
-  slaStatus: string;
-}
+import { ELECTION_TYPE_OPTIONS, MISSION_GROUP_OPTIONS, type ComplaintItem } from "@/components/oect/complaintDomain";
 
 interface DashboardViewProps {
   cases: ComplaintItem[];
   onSelectCase: (c: ComplaintItem) => void;
   onViewAllCases: () => void;
+  roleId: string;
+  onFilterStatus: (status: string) => void;
 }
 
-export default function DashboardView({ cases, onSelectCase, onViewAllCases }: DashboardViewProps) {
+export default function DashboardView({ cases, onSelectCase, onViewAllCases, roleId, onFilterStatus }: DashboardViewProps) {
   const [selectedProvince, setSelectedProvince] = useState<string>("ALL");
   const [selectedMission, setSelectedMission] = useState<string>("ALL");
   const [selectedElectionType, setSelectedElectionType] = useState<string>("ALL");
@@ -67,10 +42,12 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
 
   // KPIs
   const totalCases = filteredCases.length;
+  const newCases = filteredCases.filter((c) => c.stageId === 1).length;
   const normalCases = filteredCases.filter((c) => c.slaStatus === "NORMAL").length;
   const nearDueCases = filteredCases.filter((c) => c.slaStatus === "NEAR_DUE").length;
   const overdueCases = filteredCases.filter((c) => c.slaStatus === "OVERDUE").length;
   const completedCases = filteredCases.filter((c) => c.slaStatus === "COMPLETED").length;
+  const showIncomingCard = roleId === "intake" || roleId === "review-1";
 
   // Provinces List & Top 10
   const provinceStats = useMemo(() => {
@@ -116,7 +93,7 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
       {/* Top Filter Bar */}
       <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-xs font-medium text-[#1A202C]">
-          <Filter className="w-4 h-4 text-[#1E4E8C]" />
+          <Filter className="w-4 h-4 text-[#1B3F8B]" />
           <span>ตัวกรองข้อมูลรายงาน:</span>
         </div>
 
@@ -125,33 +102,29 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
           <select
             value={selectedElectionType}
             onChange={(e) => setSelectedElectionType(e.target.value)}
-            className="text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#1E4E8C]"
+            className="text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#1B3F8B]"
           >
             <option value="ALL">ประเภทการเลือกตั้ง: ทั้งหมด</option>
-            <option value="สส.">สมาชิกสภาผู้แทนราษฎร (สส.)</option>
-            <option value="สว.">สมาชิกวุฒิสภา (สว.)</option>
-            <option value="อบจ.">องค์การบริหารส่วนจังหวัด (อบจ.)</option>
+            {ELECTION_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
           </select>
 
           {/* Mission Group */}
           <select
             value={selectedMission}
             onChange={(e) => setSelectedMission(e.target.value)}
-            className="text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#1E4E8C]"
+            className="text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#1B3F8B]"
           >
             <option value="ALL">กลุ่มภารกิจ: ทั้งหมด 5 กลุ่ม</option>
-            <option value="สืบสวนและไต่สวน">สืบสวนและไต่สวน</option>
-            <option value="พรรคการเมือง">พรรคการเมือง</option>
-            <option value="การจัดการเลือกตั้ง">การจัดการเลือกตั้ง</option>
-            <option value="บริหารทั่วไป">บริหารทั่วไป</option>
-            <option value="กระบวนการยุติธรรม">กระบวนการยุติธรรม</option>
+            {MISSION_GROUP_OPTIONS.map((mission) => <option key={mission} value={mission}>{mission}</option>)}
           </select>
 
           {/* Province */}
           <select
             value={selectedProvince}
             onChange={(e) => setSelectedProvince(e.target.value)}
-            className="text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#1E4E8C]"
+            className="text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#1B3F8B]"
           >
             <option value="ALL">จังหวัด: ทั่วประเทศ (77 จังหวัด)</option>
             {provinceStats.map(([prov]) => (
@@ -174,81 +147,14 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
         </div>
       </div>
 
-      {/* 5 Core KPI Status Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
-        
-        {/* Total Cases */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#718096] mb-2">
-            <span className="text-xs font-medium">เรื่องร้องเรียนทั้งหมด</span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#1E4E8C] flex items-center justify-center">
-              <FileText className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-bold text-[#0B1E36]">{totalCases}</div>
-            <div className="text-[10px] text-[#718096] mt-0.5">ในระบบฐานข้อมูล POC</div>
-          </div>
-        </div>
-
-        {/* Normal SLA */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#718096] mb-2">
-            <span className="text-xs font-medium">อยู่ในเกณฑ์เวลาปกติ</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <Clock className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-bold text-emerald-600">{normalCases}</div>
-            <div className="text-[10px] text-emerald-700 mt-0.5">
-              {totalCases > 0 ? ((normalCases / totalCases) * 100).toFixed(1) : 0}% ของเรื่องทั้งหมด
-            </div>
-          </div>
-        </div>
-
-        {/* Near Due */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#718096] mb-2">
-            <span className="text-xs font-medium">ใกล้ครบกำหนด (&lt; 5 วัน)</span>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-              <AlertCircle className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-bold text-amber-600">{nearDueCases}</div>
-            <div className="text-[10px] text-amber-700 mt-0.5">ต้องเร่งรัดติดตามสำนวน</div>
-          </div>
-        </div>
-
-        {/* Overdue */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-[#718096] mb-2">
-            <span className="text-xs font-medium">เกินกำหนดเวลา (Overdue)</span>
-            <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
-              <ShieldAlert className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-bold text-red-600">{overdueCases}</div>
-            <div className="text-[10px] text-red-700 mt-0.5">ต้องขออนุมัติขยายเวลา</div>
-          </div>
-        </div>
-
-        {/* Completed */}
-        <div className="bg-white p-4 rounded-2xl border border-[#E2E8F0] shadow-xs flex flex-col justify-between col-span-2 sm:col-span-1">
-          <div className="flex items-center justify-between text-[#718096] mb-2">
-            <span className="text-xs font-medium">วินิจฉัยแล้วเสร็จ</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-bold text-indigo-600">{completedCases}</div>
-            <div className="text-[10px] text-indigo-700 mt-0.5">จัดทำคำวินิจฉัยเสร็จสิ้น</div>
-          </div>
-        </div>
-
+      {/* Role-aware KPI cards: 6 cards for intake staff, 5 cards for executives */}
+      <div className={`grid grid-cols-2 gap-3.5 sm:grid-cols-3 ${showIncomingCard ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
+        <StatusCard label="เรื่องร้องเรียนทั้งหมด" value={totalCases} helper="ในระบบฐานข้อมูล POC" icon={FileText} tone="blue" onClick={() => onFilterStatus("ALL")} />
+        {showIncomingCard && <StatusCard label="ข้อมูลเข้าใหม่" value={newCases} helper="รอตรวจและมอบหมายภายใน 3 วัน" icon={Inbox} tone="sky" onClick={() => onFilterStatus("NEW")} />}
+        <StatusCard label="อยู่ในเกณฑ์เวลาปกติ" value={normalCases} helper={`${totalCases > 0 ? ((normalCases / totalCases) * 100).toFixed(1) : 0}% ของเรื่องทั้งหมด`} icon={Clock} tone="green" onClick={() => onFilterStatus("NORMAL")} />
+        <StatusCard label="ใกล้ครบกำหนด" value={nearDueCases} helper="เหลือไม่เกิน 5 วัน" icon={AlertCircle} tone="amber" onClick={() => onFilterStatus("NEAR_DUE")} />
+        <StatusCard label="เกินกำหนดเวลา" value={overdueCases} helper="ต้องรายงานเหตุผลและเร่งรัด" icon={ShieldAlert} tone="rose" onClick={() => onFilterStatus("OVERDUE")} />
+        <StatusCard label="วินิจฉัยแล้วเสร็จ" value={completedCases} helper="ปิดตัวจับเวลาแล้ว" icon={CheckCircle2} tone="indigo" onClick={() => onFilterStatus("COMPLETED")} />
       </div>
 
       {/* Main Analytics Row: 5 Mission Groups & Top Allegations */}
@@ -258,7 +164,7 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
         <div className="lg:col-span-6 bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-[#1E4E8C]" />
+              <Layers className="w-4 h-4 text-[#1B3F8B]" />
               <h3 className="text-sm font-semibold text-[#1A202C]">จำแนกตาม 5 กลุ่มภารกิจหลัก</h3>
             </div>
             <span className="text-[11px] text-[#718096]">สัดส่วนงาน</span>
@@ -277,7 +183,7 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
                   </div>
                   <div className="w-full bg-[#EDF2F7] h-2 rounded-full overflow-hidden">
                     <div
-                      className="bg-[#1E4E8C] h-full rounded-full transition-all duration-500"
+                      className="bg-[#1B3F8B] h-full rounded-full transition-all duration-500"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -291,7 +197,7 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
         <div className="lg:col-span-6 bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-[#ECC94B]" />
+              <BarChart3 className="w-4 h-4 text-[#FFD600]" />
               <h3 className="text-sm font-semibold text-[#1A202C]">ข้อกล่าวหายอดนิยม (Top Allegations)</h3>
             </div>
             <span className="text-[11px] text-[#718096]">ความถี่ข้อหา</span>
@@ -301,15 +207,15 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
             {allegationStats.map(([name, count], i) => (
               <div
                 key={name}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-[#F7FAFC] border border-[#EDF2F7] text-xs hover:border-[#1E4E8C]/40 transition-colors"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-[#F7FAFC] border border-[#EDF2F7] text-xs hover:border-[#1B3F8B]/40 transition-colors"
               >
                 <div className="flex items-center gap-2.5">
-                  <span className="w-5 h-5 rounded-full bg-white border border-[#E2E8F0] flex items-center justify-center text-[10px] font-bold text-[#1E4E8C]">
+                  <span className="w-5 h-5 rounded-full bg-white border border-[#E2E8F0] flex items-center justify-center text-[10px] font-bold text-[#1B3F8B]">
                     0{i + 1}
                   </span>
                   <span className="font-medium text-[#2D3748] line-clamp-1">{name}</span>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-white text-[#1E4E8C] font-semibold border border-[#E2E8F0] text-xs">
+                <span className="px-2.5 py-0.5 rounded-full bg-white text-[#1B3F8B] font-semibold border border-[#E2E8F0] text-xs">
                   {count} เรื่อง
                 </span>
               </div>
@@ -326,7 +232,7 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
         <div className="lg:col-span-5 bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-[#1E4E8C]" />
+              <MapPin className="w-4 h-4 text-[#1B3F8B]" />
               <h3 className="text-sm font-semibold text-[#1A202C]">Top 10 จังหวัดที่มีเรื่องร้องเรียน</h3>
             </div>
             <span className="text-[11px] text-[#718096]">ข้อมูลรายจังหวัด</span>
@@ -339,7 +245,7 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
                 onClick={() => setSelectedProvince(prov)}
                 className={`flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer transition-all ${
                   selectedProvince === prov
-                    ? "bg-[#EBF8FF] border border-[#1E4E8C] font-semibold text-[#1E4E8C]"
+                    ? "bg-[#4FB3E8]/10 border border-[#1B3F8B] font-semibold text-[#1B3F8B]"
                     : "hover:bg-[#F7FAFC] text-[#4A5568]"
                 }`}
               >
@@ -365,7 +271,7 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
             </div>
             <button
               onClick={onViewAllCases}
-              className="text-xs text-[#1E4E8C] font-medium hover:underline flex items-center gap-1"
+              className="text-xs text-[#1B3F8B] font-medium hover:underline flex items-center gap-1"
             >
               <span>ดูเรื่องทั้งหมด</span>
               <ArrowUpRight className="w-3 h-3" />
@@ -382,11 +288,11 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
                 <div
                   key={c.id}
                   onClick={() => onSelectCase(c)}
-                  className="p-3.5 rounded-xl border border-[#E2E8F0] hover:border-[#1E4E8C] hover:shadow-xs transition-all cursor-pointer bg-[#F7FAFC] flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  className="p-3.5 rounded-xl border border-[#E2E8F0] hover:border-[#1B3F8B] hover:shadow-xs transition-all cursor-pointer bg-[#F7FAFC] flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-[#0B1E36]">{c.caseNumber}</span>
+                      <span className="text-xs font-semibold text-[#1B3F8B]">{c.caseNumber}</span>
                       <span className="text-[10px] px-2 py-0.5 rounded bg-white border border-[#E2E8F0] text-[#718096]">
                         จ.{c.province} {c.constituency}
                       </span>
@@ -411,7 +317,7 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
                         ? `เกินกำหนด ${Math.abs(c.remainingDays)} วัน`
                         : `เหลืออีก ${c.remainingDays} วัน`}
                     </span>
-                    <button className="text-xs text-[#1E4E8C] font-medium underline">
+                    <button className="text-xs text-[#1B3F8B] font-medium underline">
                       เปิดสำนวน
                     </button>
                   </div>
@@ -424,5 +330,43 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases }: D
       </div>
 
     </div>
+  );
+}
+
+function StatusCard({
+  label,
+  value,
+  helper,
+  icon: Icon,
+  tone,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  helper: string;
+  icon: typeof FileText;
+  tone: "blue" | "sky" | "green" | "amber" | "rose" | "indigo";
+  onClick: () => void;
+}) {
+  const tones = {
+    blue: "bg-blue-50 text-blue-700",
+    sky: "bg-blue-50 text-blue-700",
+    green: "bg-emerald-50 text-emerald-700",
+    amber: "bg-amber-50 text-amber-700",
+    rose: "bg-rose-50 text-rose-700",
+    indigo: "bg-blue-50 text-blue-700",
+  };
+
+  return (
+    <button type="button" onClick={onClick} className="flex min-h-32 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-xs transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100">
+      <div className="flex w-full items-start justify-between gap-3 text-slate-500">
+        <span className="text-xs font-medium leading-5">{label}</span>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tones[tone]}`}><Icon className="h-4 w-4" /></span>
+      </div>
+      <div>
+        <div className="text-2xl font-bold text-slate-950 sm:text-3xl">{value}</div>
+        <div className="mt-0.5 text-[10px] leading-4 text-slate-500">{helper}</div>
+      </div>
+    </button>
   );
 }

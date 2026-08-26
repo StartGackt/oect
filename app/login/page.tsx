@@ -1,401 +1,275 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  ShieldCheck, 
-  Lock, 
-  User, 
-  Sliders, 
-  ArrowRight, 
-  Key, 
-  Smartphone, 
-  CheckCircle2, 
-  Building2, 
-  Sparkles,
-  Fingerprint,
-  QrCode,
+import {
+  ArrowRight,
+  BadgeCheck,
+  Building2,
+  Check,
   Eye,
   EyeOff,
-  AlertCircle,
-  HelpCircle
+  Fingerprint,
+  Headphones,
+  KeyRound,
+  LockKeyhole,
+  QrCode,
+  ShieldCheck,
+  Smartphone,
+  UserRound,
 } from "lucide-react";
+
+type Gateway = "user" | "admin";
+type LoginMethod = "password" | "thaid";
+
+const OFFICER_ACCESS_OPTIONS = [
+  { value: "intake", label: "พนักงานรับและบันทึกคำร้อง" },
+  { value: "director", label: "ผอ.สนง.กกต.จว." },
+  { value: "commission", label: "กกต. / ลธ.กกต. ส่วนกลาง" },
+  { value: "admin", label: "ผู้ดูแลระบบ (System Admin)" },
+] as const;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [selectedGateway, setSelectedGateway] = useState<"user" | "admin">("user");
-  const [loginMethod, setLoginMethod] = useState<"password" | "thaid">("password");
-  const [username, setUsername] = useState<string>("warakorn_cmi");
-  const [password, setPassword] = useState<string>("••••••••••••");
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [selectedGateway, setSelectedGateway] = useState<Gateway>("user");
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>("password");
+  const [username, setUsername] = useState("citizen_thaid");
+  const [identityStatus, setIdentityStatus] = useState("ผู้มีสิทธิเลือกตั้งในเขต");
+  const [officerRole, setOfficerRole] = useState("intake");
+  const [password, setPassword] = useState("demo-password");
+  const [otp, setOtp] = useState("291846");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Quick Preset Roles for Testing
-  const quickUserPresets = [
-    { label: "ระดับ 1: พนักงานส่วนภูมิภาค (เชียงใหม่)", username: "warakorn_cmi", role: "พนักงานบันทึกข้อมูล/สืบสวน" },
-    { label: "ระดับ 2: ผอ.สนง.กกต.จว. เชียงใหม่", username: "director_cmi", role: "ผอ.กกต.จว. (สั่งรับ/ไม่รับ)" },
-    { label: "ระดับ 3: กกต./ลธ.กกต. ส่วนกลาง", username: "commissioner_01", role: "วินิจฉัยชี้ขาด (ทั่วประเทศ)" },
-    { label: "ระดับ 4: ประชาชน/ผู้ร้องเรียน", username: "citizen_thaid", role: "ติดตามสำนวนตนเอง (PDPA)" },
-  ];
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = (event: React.FormEvent) => {
+    event.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      if (selectedGateway === "admin") {
-        router.push("/admin");
-      } else {
-        router.push("/user");
-      }
-    }, 600);
+    window.setTimeout(() => {
+      router.push(selectedGateway === "user"
+        ? "/user?view=citizen"
+        : officerRole === "admin" ? "/admin" : `/user?role=${officerRole}`);
+    }, 550);
   };
 
-  const handleQuickLogin = (dest: "user" | "admin", presetUsername?: string) => {
+  const handleDemoLogin = (destination: "citizen" | "officer") => {
     setIsLoading(true);
-    if (presetUsername) setUsername(presetUsername);
-    setTimeout(() => {
-      if (dest === "admin") {
-        router.push("/admin");
-      } else {
-        router.push("/user");
-      }
-    }, 400);
+    window.setTimeout(() => {
+      router.push(destination === "citizen"
+        ? "/user?view=citizen"
+        : officerRole === "admin" ? "/admin" : `/user?role=${officerRole}`);
+    }, 350);
   };
 
   return (
-    <main className="min-h-screen bg-[#071326] text-white flex flex-col justify-between font-kanit selection:bg-amber-500 selection:text-slate-950 relative overflow-hidden">
-      
-      {/* Background Decorative Lighting */}
-      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/3 -right-40 w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 left-1/3 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+    <main className="relative min-h-svh overflow-hidden bg-[#F4F8FC] font-kanit text-slate-950 selection:bg-[#FFD600] selection:text-[#1B3F8B]">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-48 -top-48 h-[34rem] w-[34rem] rounded-full bg-[#4FB3E8]/25 blur-3xl" />
+        <div className="absolute -bottom-56 -right-40 h-[38rem] w-[38rem] rounded-full bg-[#FFD600]/15 blur-3xl" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.42)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.42)_1px,transparent_1px)] bg-[size:48px_48px] [mask-image:linear-gradient(to_bottom,black,transparent_72%)]" />
+      </div>
 
-      {/* Top GovTech Security Bar */}
-      <header className="border-b border-slate-800/80 bg-[#0B1E36]/80 backdrop-blur-md px-4 sm:px-6 py-2.5 z-20">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span className="font-semibold text-white">ระบบรักษาความมั่นคงปลอดภัยภาครัฐ (GovTech Security Gateway)</span>
+      <header className="relative z-10 border-b border-slate-200/80 bg-white/75 backdrop-blur-xl">
+        <div className="mx-auto flex h-[72px] max-w-[1480px] items-center justify-between px-4 sm:px-7 lg:px-10">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-[#FFD600] bg-white p-1.5 shadow-sm">
+              <Image src="/oect-logo.png" alt="ตราสัญลักษณ์สำนักงานคณะกรรมการการเลือกตั้ง" fill sizes="44px" className="object-contain p-1" priority />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold text-[#1B3F8B] sm:text-base">สำนักงานคณะกรรมการการเลือกตั้ง</span>
+              <span className="block truncate text-[10px] font-normal tracking-wide text-slate-500 sm:text-[11px]">OFFICE OF THE ELECTION COMMISSION OF THAILAND</span>
+            </span>
           </div>
-          <div className="flex items-center gap-4 text-[11px] text-slate-400">
-            <span className="hidden sm:inline">ระบบพิสูจน์และยืนยันตัวตนทางดิจิทัล (DOPA ThaID)</span>
-            <span className="text-amber-300 font-mono">TLS 1.3 / AES-256</span>
+
+          <div className="hidden items-center gap-5 text-[11px] text-slate-500 sm:flex">
+            <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-[#4FB3E8] ring-4 ring-[#4FB3E8]/20" /> ระบบพร้อมให้บริการ</span>
+            <span className="h-4 w-px bg-slate-200" />
+            <span className="inline-flex items-center gap-1.5"><Headphones className="h-3.5 w-3.5" /> ศูนย์ช่วยเหลือ 02-141-8888</span>
           </div>
         </div>
       </header>
 
-      {/* Main Login Card Container */}
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 z-20 my-6">
-        <div className="w-full max-w-xl bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-2xl space-y-6 relative">
-          
-          {/* Brand Header */}
-          <div className="text-center space-y-3">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto relative bg-white rounded-2xl p-2 border-2 border-amber-400/80 shadow-lg shadow-amber-500/10">
-              <Image
-                src="/oect-logo.png"
-                alt="ตราสัญลักษณ์ สนง.กกต."
-                fill
-                className="object-contain p-1"
-                priority
-              />
-            </div>
-            
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-semibold">
-                <span>สำนักงานคณะกรรมการการเลือกตั้ง (สนง.กกต.)</span>
-              </div>
-              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                ระบบบริหารจัดการเรื่องร้องเรียน <br className="hidden sm:inline" />
-                และการดำเนินการตามกระบวนการยุติธรรม (ECT-CMS)
-              </h1>
-              <p className="text-xs text-slate-400 font-light">
-                กรุณาเลือกประเภทระบบงานและยืนยันตัวตนเพื่อเข้าสู่ระบบ
-              </p>
-            </div>
-          </div>
-
-          {/* DUAL GATEWAY SELECTOR (ให้เลือกว่าจะไปไหน) */}
-          <div className="grid grid-cols-2 gap-2.5 p-1.5 bg-slate-950/80 rounded-2xl border border-slate-800">
-            
-            {/* Option 1: User Portal */}
-            <button
-              type="button"
-              onClick={() => setSelectedGateway("user")}
-              className={`p-3 rounded-xl text-left transition-all flex items-center gap-3 ${
-                selectedGateway === "user"
-                  ? "bg-gradient-to-r from-[#173B6B] to-[#1E4E8C] text-white shadow-md border border-blue-400/30"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-              }`}
-            >
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold flex-shrink-0 ${
-                selectedGateway === "user" ? "bg-white/20 text-amber-300" : "bg-slate-800 text-slate-400"
-              }`}>
-                <User className="w-4 h-4" />
-              </div>
-              <div className="truncate">
-                <div className="text-xs font-bold leading-tight">1. ระบบงานผู้ใช้</div>
-                <div className="text-[10px] text-slate-300 truncate">เจ้าหน้าที่ / ประชาชน</div>
-              </div>
-            </button>
-
-            {/* Option 2: Admin Console */}
-            <button
-              type="button"
-              onClick={() => setSelectedGateway("admin")}
-              className={`p-3 rounded-xl text-left transition-all flex items-center gap-3 ${
-                selectedGateway === "admin"
-                  ? "bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 shadow-md border border-amber-300/50"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-              }`}
-            >
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold flex-shrink-0 ${
-                selectedGateway === "admin" ? "bg-slate-950 text-amber-400" : "bg-slate-800 text-slate-400"
-              }`}>
-                <Sliders className="w-4 h-4" />
-              </div>
-              <div className="truncate">
-                <div className="text-xs font-bold leading-tight">2. ผู้ดูแลระบบ</div>
-                <div className={`text-[10px] truncate ${selectedGateway === "admin" ? "text-slate-900 font-medium" : "text-slate-400"}`}>
-                  Admin & Governance
+      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-116px)] max-w-[1180px] items-center justify-center px-4 py-5 sm:px-7 sm:py-7 lg:px-10 lg:py-8">
+        <section className="w-full">
+          <div className="relative w-full overflow-hidden rounded-[28px] border border-white/90 border-t-[#FFD600] bg-white/95 p-5 shadow-[0_28px_80px_-40px_rgba(27,63,139,.38)] backdrop-blur-xl sm:border-t-4 sm:p-8 lg:p-10">
+            <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#4FB3E8]/10 blur-3xl" />
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="relative h-10 w-10 overflow-hidden rounded-xl border border-[#FFD600] bg-white p-1"><Image src="/oect-logo.png" alt="ตราสัญลักษณ์ สนง.กกต." fill sizes="40px" className="object-contain p-1" /></span>
+                  <span className="text-[10px] font-semibold leading-4 text-[#1B3F8B]">สำนักงานคณะกรรมการ<br />การเลือกตั้ง</span>
                 </div>
+                <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-[#4FB3E8]">Secure sign in</p>
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[1.7rem]">{selectedGateway === "user" ? "บริการสำหรับผู้ร้องเรียน" : "ระบบงานเจ้าหน้าที่"}</h2>
+                <p className="mt-1.5 text-xs font-light leading-5 text-slate-500">{selectedGateway === "user" ? "ยื่นคำร้อง ติดตาม แก้ไขเอกสาร และรับผลการพิจารณา" : "จัดการคำร้อง สำนวน Workflow และการกำกับระบบ"}</p>
               </div>
-            </button>
+              <span className="mt-1 inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#4FB3E8]/10 px-2.5 py-1 text-[10px] font-medium text-[#1B3F8B] ring-1 ring-[#4FB3E8]/35">
+                <LockKeyhole className="h-3 w-3" /> ปลอดภัย
+              </span>
+            </div>
 
-          </div>
+            <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1.5" role="tablist" aria-label="เลือกประเภทระบบงาน">
+              <GatewayTab active={selectedGateway === "user"} onClick={() => setSelectedGateway("user")} icon={<UserRound className="h-4 w-4" />} label="ผู้ร้องเรียน" detail="ยื่นและติดตามคำร้อง" />
+              <GatewayTab active={selectedGateway === "admin"} onClick={() => setSelectedGateway("admin")} icon={<Building2 className="h-4 w-4" />} label="เจ้าหน้าที่ / ผู้ดูแล" detail="จัดการคำร้องและระบบ" tone="gold" />
+            </div>
 
-          {/* AUTH FORM */}
-          {selectedGateway === "user" ? (
-            <div className="space-y-4">
-              
-              {/* Method Switch: Username vs ThaID */}
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2.5 text-xs">
-                <span className="text-slate-400 font-medium">วิธีการยืนยันตัวตน:</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setLoginMethod("password")}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
-                      loginMethod === "password"
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    รหัสผ่าน + OTP
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLoginMethod("thaid")}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors flex items-center gap-1 ${
-                      loginMethod === "thaid"
-                        ? "bg-emerald-600 text-white"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    <Fingerprint className="w-3 h-3" />
-                    <span>แอป ThaID</span>
-                  </button>
+            {selectedGateway === "user" ? (
+              <div className="mt-6">
+                <div className="mb-5 flex gap-6 border-b border-slate-200" role="tablist" aria-label="วิธียืนยันตัวตน">
+                  <MethodTab active={loginMethod === "password"} onClick={() => setLoginMethod("password")} icon={<KeyRound className="h-3.5 w-3.5" />} label="บัญชีผู้ใช้ + OTP" />
+                  <MethodTab active={loginMethod === "thaid"} onClick={() => setLoginMethod("thaid")} icon={<Fingerprint className="h-3.5 w-3.5" />} label="ยืนยันผ่าน ThaID" />
                 </div>
-              </div>
 
-              {loginMethod === "password" ? (
-                <form onSubmit={handleLogin} className="space-y-3.5">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">
-                      ชื่อผู้ใช้งาน / เลขประจำตัวประชาชน 13 หลัก
-                    </label>
-                    <div className="relative">
-                      <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                      <input
-                        type="text"
-                        required
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="กรอกชื่อผู้ใช้ หรือเลขบัตร 13 หลัก"
-                        className="w-full pl-10 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                      />
+                {loginMethod === "password" ? (
+                  <form onSubmit={handleLogin} className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label htmlFor="identity-status" className="mb-1.5 block text-[11px] font-medium text-slate-700">ประเภทผู้ใช้งาน</label>
+                      <select id="identity-status" value={identityStatus} onChange={(event) => setIdentityStatus(event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-800 outline-none transition focus:border-[#4FB3E8] focus:bg-white focus:ring-4 focus:ring-[#4FB3E8]/20">
+                        <option>ผู้มีสิทธิเลือกตั้งในเขต</option>
+                        <option>ผู้สมัครรับเลือกตั้งในเขต</option>
+                      </select>
                     </div>
-                  </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-medium text-slate-300">
-                        รหัสผ่าน (Password)
-                      </label>
-                      <span className="text-[10px] text-blue-400 hover:underline cursor-pointer">
-                        ลืมรหัสผ่าน?
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••••••"
-                        className="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-3 text-slate-500 hover:text-slate-300"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <Field id="username" label="ชื่อผู้ใช้ / เลขประจำตัวประชาชน" icon={<UserRound className="h-4 w-4" />}>
+                      <input id="username" type="text" required autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-xs outline-none transition placeholder:text-slate-400 focus:border-[#4FB3E8] focus:bg-white focus:ring-4 focus:ring-[#4FB3E8]/20" placeholder="กรอกชื่อผู้ใช้หรือเลขประจำตัวประชาชน" />
+                    </Field>
+
+                    <Field id="password" label="รหัสผ่าน" icon={<LockKeyhole className="h-4 w-4" />} action="ลืมรหัสผ่าน?">
+                      <input id="password" type={showPassword ? "text" : "password"} required autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-11 text-xs outline-none transition placeholder:text-slate-400 focus:border-[#4FB3E8] focus:bg-white focus:ring-4 focus:ring-[#4FB3E8]/20" placeholder="กรอกรหัสผ่าน" />
+                      <button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"} className="absolute bottom-0 right-0 flex h-11 w-11 items-center justify-center text-slate-400 transition hover:text-slate-700">
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
-                    </div>
-                  </div>
+                    </Field>
 
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[#173B6B] to-[#1E4E8C] hover:from-[#0B1E36] hover:to-[#173B6B] text-white font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2"
-                  >
-                    <span>{isLoading ? "กำลังยืนยันตัวตน..." : "เข้าสู่ระบบงานผู้ใช้ (User Portal)"}</span>
-                    <ArrowRight className="w-4 h-4 text-amber-300" />
-                  </button>
-                </form>
-              ) : (
-                /* ThaID QR Code Login */
-                <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 text-center space-y-3">
-                  <div className="w-32 h-32 mx-auto bg-white rounded-xl p-2 border border-emerald-500/40 flex items-center justify-center">
-                    <QrCode className="w-28 h-28 text-slate-900" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-emerald-400 flex items-center justify-center gap-1.5">
-                      <Fingerprint className="w-4 h-4" />
-                      <span>สแกน QR Code ด้วยแอปพลิเคชัน ThaID</span>
+                    <div>
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <label htmlFor="otp" className="text-[11px] font-medium text-slate-700">รหัส OTP 6 หลัก</label>
+                        <button type="button" className="text-[10px] font-medium text-[#1B3F8B] hover:underline">ส่งรหัสอีกครั้ง</button>
+                      </div>
+                      <div className="relative">
+                        <Smartphone className="pointer-events-none absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                        <input id="otp" type="text" required inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 6))} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 font-kanit text-sm tracking-[.22em] outline-none transition focus:border-[#4FB3E8] focus:bg-white focus:ring-4 focus:ring-[#4FB3E8]/20" />
+                      </div>
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      เปิดแอป ThaID บนสมาร์ตโฟน แล้วสแกนเพื่อยืนยันตัวตนทางดิจิทัลทันที
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleQuickLogin("user", "citizen_thaid")}
-                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors"
-                  >
-                    จำลองการสแกน ThaID สำเร็จ →
-                  </button>
-                </div>
-              )}
 
-              {/* Quick One-Click Preset Buttons */}
-              <div className="pt-2 border-t border-slate-800 space-y-2">
-                <div className="text-[11px] font-semibold text-slate-400 flex items-center justify-between">
-                  <span>⚡ หรือเลือกทดสอบเข้าสู่ระบบตามสิทธิ์ (4 ระดับ):</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {quickUserPresets.map((preset, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => handleQuickLogin("user", preset.username)}
-                      className="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-800 border border-slate-700 text-left transition-colors text-xs space-y-0.5"
-                    >
-                      <div className="font-semibold text-blue-300 truncate text-[11px]">{preset.label}</div>
-                      <div className="text-[10px] text-slate-400 truncate">{preset.role}</div>
+                    <button type="submit" disabled={isLoading} className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1B3F8B] px-5 text-xs font-semibold text-white shadow-lg shadow-[#1B3F8B]/20 transition hover:bg-[#4FB3E8] hover:text-[#1B3F8B] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#4FB3E8]/30 disabled:cursor-wait disabled:opacity-70 md:col-span-2">
+                      {isLoading ? "กำลังตรวจสอบข้อมูล..." : "เข้าสู่ระบบ"}
+                      <ArrowRight className="h-4 w-4 text-[#FFD600] transition group-hover:translate-x-0.5" />
                     </button>
-                  ))}
+                  </form>
+                ) : (
+                  <ThaIdPanel onSuccess={() => handleDemoLogin("citizen")} isLoading={isLoading} />
+                )}
+
+                <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-[#4FB3E8]/35 bg-[#4FB3E8]/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#1B3F8B]" />
+                    <div><div className="text-[11px] font-semibold text-[#1B3F8B]">พื้นที่ส่วนตัวของผู้ร้องเรียน</div><div className="mt-1 text-[10px] leading-5 text-slate-500">แสดงเฉพาะคำร้องของตนเอง และไม่เปิดเผยข้อมูลการทำงานภายในของเจ้าหน้าที่</div></div>
+                  </div>
+                  <button type="button" onClick={() => handleDemoLogin("citizen")} className="shrink-0 rounded-xl border border-[#4FB3E8] bg-white px-4 py-2.5 text-[10px] font-semibold text-[#1B3F8B] transition hover:bg-[#4FB3E8]/15">ทดลองระบบผู้ร้อง</button>
                 </div>
               </div>
-
-            </div>
-          ) : (
-            /* ADMIN LOGIN */
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-start gap-2">
-                <ShieldCheck className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-                <span>
-                  สำหรับผู้ดูแลระบบ สนง.กกต. ส่วนกลาง และฝ่ายเทคโนโลยีสารสนเทศ (ควบคุม RBAC, SLA, API 3 ระบบ)
-                </span>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  ชื่อผู้ดูแลระบบ (Admin Account / UPN)
-                </label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                  <input
-                    type="text"
-                    required
-                    defaultValue="admin_root"
-                    className="w-full pl-10 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-amber-400"
-                  />
+            ) : (
+              <form onSubmit={handleLogin} className="mt-6 grid gap-4 md:grid-cols-2">
+                <div className="flex items-start gap-3 rounded-2xl border border-[#FFD600] bg-[#FFD600]/10 p-3.5 text-[10px] leading-5 text-[#1B3F8B] md:col-span-2">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#1B3F8B]" />
+                  สำหรับเจ้าหน้าที่ผู้รับผิดชอบการรับเรื่อง ตรวจสอบ สั่งการ สืบสวน วินิจฉัย และผู้ดูแลระบบเท่านั้น
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  รหัสผ่านผู้ดูแลระบบ (Admin Master Key)
-                </label>
-                <div className="relative">
-                  <Key className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                  <input
-                    type="password"
-                    required
-                    defaultValue="••••••••••••••••"
-                    className="w-full pl-10 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-amber-400"
-                  />
+                <div>
+                  <label htmlFor="officer-role" className="mb-1.5 block text-[11px] font-medium text-slate-700">บทบาทเจ้าหน้าที่</label>
+                  <select id="officer-role" value={officerRole} onChange={(event) => setOfficerRole(event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-800 outline-none transition focus:border-[#FFD600] focus:bg-white focus:ring-4 focus:ring-[#FFD600]/20">
+                    {OFFICER_ACCESS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  รหัสยืนยัน 2FA Hardware Token / TOTP Code (6 หลัก)
-                </label>
-                <div className="relative">
-                  <Smartphone className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                  <input
-                    type="text"
-                    required
-                    defaultValue="842 195"
-                    className="w-full pl-10 pr-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono text-amber-300 tracking-wider focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-2"
-              >
-                <span>{isLoading ? "กำลังตรวจสอบสิทธิ์ Admin..." : "เข้าสู่ศูนย์ควบคุมผู้ดูแลระบบ (Admin Console)"}</span>
-                <ArrowRight className="w-4 h-4 text-slate-950" />
-              </button>
-
-              <div className="pt-2 border-t border-slate-800 text-center">
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin("admin")}
-                  className="text-xs text-amber-400 hover:underline font-semibold"
-                >
-                  ⚡ เข้าสู่ระบบ Admin ทันที (โหมดทดสอบ) →
+                <Field id="admin-account" label="บัญชีเจ้าหน้าที่ / ผู้ดูแลระบบ" icon={<UserRound className="h-4 w-4" />}>
+                  <input id="admin-account" type="text" required autoComplete="username" defaultValue="admin_root" className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-xs outline-none transition focus:border-[#FFD600] focus:bg-white focus:ring-4 focus:ring-[#FFD600]/20" />
+                </Field>
+                <Field id="admin-password" label="รหัสผ่าน" icon={<LockKeyhole className="h-4 w-4" />}>
+                  <input id="admin-password" type="password" required autoComplete="current-password" defaultValue="admin-demo-password" className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-xs outline-none transition focus:border-[#FFD600] focus:bg-white focus:ring-4 focus:ring-[#FFD600]/20" />
+                </Field>
+                <Field id="admin-otp" label="รหัสยืนยัน 2FA / Hardware Token" icon={<Smartphone className="h-4 w-4" />}>
+                  <input id="admin-otp" type="text" required inputMode="numeric" autoComplete="one-time-code" defaultValue="842195" maxLength={6} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 font-kanit text-sm tracking-[.22em] outline-none transition focus:border-[#FFD600] focus:bg-white focus:ring-4 focus:ring-[#FFD600]/20" />
+                </Field>
+                <button type="submit" disabled={isLoading} className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#FFD600] px-5 text-xs font-semibold text-[#1B3F8B] shadow-lg shadow-[#FFD600]/20 transition hover:bg-[#4FB3E8] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#FFD600]/30 disabled:cursor-wait disabled:opacity-70 md:col-span-2">
+                  {isLoading ? "กำลังตรวจสอบสิทธิ์..." : "เข้าสู่ระบบงานเจ้าหน้าที่"}
+                  <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                 </button>
-              </div>
-            </form>
-          )}
+                <button type="button" onClick={() => handleDemoLogin("officer")} className="w-full text-center text-[10px] font-medium text-[#1B3F8B] hover:underline md:col-span-2">ทดลองระบบตามบทบาทที่เลือก</button>
+              </form>
+            )}
 
-        </div>
+            <div className="mt-6 flex items-center justify-center gap-2 border-t border-slate-100 pt-4 text-[9px] text-slate-400">
+              <LockKeyhole className="h-3 w-3" /> การเข้าสู่ระบบจะถูกบันทึกใน Audit Log ตามนโยบายความมั่นคงปลอดภัย
+            </div>
+          </div>
+        </section>
       </div>
 
-      {/* Security Compliance Footer */}
-      <footer className="border-t border-slate-800/80 bg-[#0B1E36]/90 px-4 sm:px-6 py-4 z-20 text-xs text-slate-400">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-          <div>
-            © 2026 สำนักงานคณะกรรมการการเลือกตั้ง · ระบบบริหารจัดการเรื่องร้องเรียนและการสืบสวนไต่สวน (ECT-CMS)
-          </div>
-          <div className="flex items-center gap-3 text-[11px] text-slate-400">
-            <span>มาตรฐาน OWASP Top 10</span>
-            <span>·</span>
-            <span>พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)</span>
-            <span>·</span>
-            <span>ระบบเชื่อมโยง DXC / Linkage Center</span>
-          </div>
+      <footer className="relative z-10 border-t border-slate-200/80 bg-white/60 px-4 py-3 text-[10px] text-slate-500 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[1480px] flex-col items-center justify-between gap-1.5 text-center sm:flex-row sm:px-3 sm:text-left">
+          <span>© 2569 สำนักงานคณะกรรมการการเลือกตั้ง</span>
+          <span>PDPA · OWASP Top 10 · TLS 1.3 / AES-256</span>
         </div>
       </footer>
-
     </main>
+  );
+}
+
+function GatewayTab({ active, onClick, icon, label, detail, tone = "blue" }: { active: boolean; onClick: () => void; icon: ReactNode; label: string; detail: string; tone?: "blue" | "gold" }) {
+  const activeClass = tone === "gold" ? "bg-white text-[#1B3F8B] shadow-sm ring-1 ring-[#FFD600]" : "bg-white text-[#1B3F8B] shadow-sm ring-1 ring-[#4FB3E8]/45";
+  return (
+    <button type="button" role="tab" aria-selected={active} onClick={onClick} className={`flex min-h-14 items-center gap-2.5 rounded-xl px-3 text-left transition ${active ? activeClass : "text-slate-500 hover:bg-white/50 hover:text-slate-800"}`}>
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${active ? tone === "gold" ? "bg-[#FFD600] text-[#1B3F8B]" : "bg-[#4FB3E8]/15 text-[#1B3F8B]" : "bg-slate-200/70"}`}>{icon}</span>
+      <span className="min-w-0">
+        <span className="block truncate text-[11px] font-semibold">{label}</span>
+        <span className="block truncate text-[9px] font-light opacity-65">{detail}</span>
+      </span>
+    </button>
+  );
+}
+
+function MethodTab({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: ReactNode; label: string }) {
+  return (
+    <button type="button" role="tab" aria-selected={active} onClick={onClick} className={`relative flex items-center gap-1.5 pb-3 text-[11px] font-medium transition ${active ? "text-[#1B3F8B]" : "text-slate-400 hover:text-slate-700"}`}>
+      {icon}{label}
+      {active && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-[#4FB3E8]" />}
+    </button>
+  );
+}
+
+function Field({ id, label, icon, action, children }: { id: string; label: string; icon: ReactNode; action?: string; children: ReactNode }) {
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between">
+        <label htmlFor={id} className="text-[11px] font-medium text-slate-700">{label}</label>
+        {action && <button type="button" className="text-[10px] font-medium text-[#1B3F8B] hover:underline">{action}</button>}
+      </div>
+      <div className="relative">
+        <span className="pointer-events-none absolute left-3.5 top-3.5 text-slate-400">{icon}</span>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ThaIdPanel({ onSuccess, isLoading }: { onSuccess: () => void; isLoading: boolean }) {
+  return (
+    <div className="rounded-2xl border border-[#4FB3E8]/45 bg-[#4FB3E8]/10 p-4 sm:p-5">
+      <div className="grid items-center gap-5 sm:grid-cols-[138px_1fr]">
+        <div className="relative mx-auto flex h-[138px] w-[138px] items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <QrCode className="h-[108px] w-[108px] text-slate-950" />
+          <span className="absolute inset-0 m-auto flex h-9 w-9 items-center justify-center rounded-lg border border-[#4FB3E8] bg-white text-[#1B3F8B]"><Fingerprint className="h-5 w-5" /></span>
+        </div>
+        <div>
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-[#1B3F8B]"><Fingerprint className="h-4 w-4 text-[#4FB3E8]" /> ยืนยันตัวตนด้วย ThaID</h3>
+          <ol className="mt-3 space-y-2 text-[10px] leading-5 text-[#1B3F8B]/75">
+            {["เปิดแอปพลิเคชัน ThaID", "เลือกเมนูสแกน QR Code", "ตรวจสอบและยืนยันการเข้าสู่ระบบ"].map((step, index) => <li key={step} className="flex gap-2"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FFD600] text-[9px] font-semibold text-[#1B3F8B]">{index + 1}</span>{step}</li>)}
+          </ol>
+        </div>
+      </div>
+      <button type="button" onClick={onSuccess} disabled={isLoading} className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1B3F8B] text-xs font-semibold text-white transition hover:bg-[#4FB3E8] hover:text-[#1B3F8B] disabled:opacity-70">
+        {isLoading ? "กำลังยืนยันตัวตน..." : "จำลองการยืนยัน ThaID สำเร็จ"}<Check className="h-4 w-4" />
+      </button>
+    </div>
   );
 }

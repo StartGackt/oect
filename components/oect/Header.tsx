@@ -7,23 +7,11 @@ import {
   Bell, 
   ChevronDown, 
   PlusCircle, 
-  Shield, 
-  User, 
-  ExternalLink,
-  Layers,
-  LayoutDashboard,
-  Clock,
-  Settings,
-  Search,
-  CheckCircle2,
-  AlertTriangle,
-  FileText,
-  Building2,
   Lock,
-  Sparkles,
   LogOut
 } from "lucide-react";
 import { useState } from "react";
+import { CURRENT_CITIZEN } from "@/components/oect/complaintDomain";
 
 export interface UserRole {
   id: string;
@@ -48,8 +36,8 @@ export const USER_ROLES: UserRole[] = [
     name: "นายสมศักดิ์ บริหารงาน (ผอ.กกต.จว.)",
     level: "ระดับ 2: ผอ.สนง.กกต.จว.",
     scope: "สนง.กกต.จว. เชียงใหม่",
-    badgeColor: "bg-indigo-600",
-    bgLight: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    badgeColor: "bg-blue-600",
+    bgLight: "bg-blue-50 text-blue-700 border-blue-200",
   },
   {
     id: "central_commissioner",
@@ -61,7 +49,7 @@ export const USER_ROLES: UserRole[] = [
   },
   {
     id: "citizen",
-    name: "นายศุภชัย ทดสอบ (ผู้ร้องเรียน)",
+    name: `${CURRENT_CITIZEN.name} (ผู้ร้องเรียน)`,
     level: "ระดับ 4: ประชาชน/ผู้ร้องเรียน",
     scope: "ติดตามเรื่องของตนเอง",
     badgeColor: "bg-emerald-600",
@@ -87,12 +75,9 @@ interface HeaderProps {
 }
 
 export default function Header({
-  activeTab = "hub",
-  setActiveTab,
   currentRole = USER_ROLES[0],
   setCurrentRole,
   openNewModal,
-  mode = "user",
 }: HeaderProps) {
   const pathname = usePathname();
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
@@ -128,7 +113,7 @@ export default function Header({
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
       {/* Top micro-bar for GovTech authenticity */}
-      <div className="bg-[#0B1E36] text-slate-300 text-[11px] py-1 px-4 sm:px-6">
+      <div className="bg-[#1B3F8B] text-slate-300 text-[11px] py-1 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
@@ -161,7 +146,7 @@ export default function Header({
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold text-[#0B1E36] tracking-tight group-hover:text-[#173B6B]">
+              <span className="text-sm font-bold text-[#1B3F8B] tracking-tight group-hover:text-[#1B3F8B]">
                 สนง.กกต. (ECT-CMS)
               </span>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-900 border border-amber-200">
@@ -182,7 +167,7 @@ export default function Header({
             href="/user"
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               !pathname?.startsWith("/admin")
-                ? "bg-[#173B6B] text-white shadow-xs"
+                ? "bg-[#1B3F8B] text-white shadow-xs"
                 : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
             }`}
           >
@@ -194,7 +179,7 @@ export default function Header({
             href="/admin"
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               pathname?.startsWith("/admin")
-                ? "bg-[#0B1E36] text-amber-300 shadow-xs"
+                ? "bg-[#1B3F8B] text-amber-300 shadow-xs"
                 : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
             }`}
           >
@@ -209,7 +194,7 @@ export default function Header({
           {openNewModal && (
             <button
               onClick={openNewModal}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#173B6B] to-[#1E4E8C] text-white hover:from-[#0B1E36] hover:to-[#173B6B] font-medium text-xs shadow-xs hover:shadow transition-all duration-200"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#1B3F8B] to-[#1B3F8B] text-white hover:from-[#1B3F8B] hover:to-[#1B3F8B] font-medium text-xs shadow-xs hover:shadow transition-all duration-200"
             >
               <PlusCircle className="w-3.5 h-3.5 text-amber-300" />
               <span className="hidden sm:inline font-semibold">+ รับคำร้องใหม่</span>
@@ -250,7 +235,7 @@ export default function Header({
                         }}
                         className={`w-full text-left p-2.5 rounded-xl text-xs transition-all flex items-start gap-2.5 ${
                           currentRole.id === role.id 
-                            ? "bg-slate-100 text-[#0B1E36] font-bold border border-slate-200" 
+                            ? "bg-slate-100 text-[#1B3F8B] font-bold border border-slate-200"
                             : "hover:bg-slate-50 text-slate-700"
                         }`}
                       >
@@ -258,7 +243,7 @@ export default function Header({
                         <div className="flex-1">
                           <div className="font-semibold text-slate-900 leading-tight">{role.name}</div>
                           <div className="text-[10px] text-slate-500 mt-0.5">{role.level}</div>
-                          <div className="text-[9px] text-[#173B6B] mt-0.5 bg-slate-100 px-1.5 py-0.5 rounded inline-block">
+                          <div className="text-[9px] text-[#1B3F8B] mt-0.5 bg-slate-100 px-1.5 py-0.5 rounded inline-block">
                             ขอบเขต: {role.scope}
                           </div>
                         </div>
@@ -298,13 +283,13 @@ export default function Header({
                   {notifications.map((n) => (
                     <div key={n.id} className="p-3.5 hover:bg-slate-50 text-xs transition-colors">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-[#173B6B]">{n.caseNum}</span>
+                        <span className="font-bold text-[#1B3F8B]">{n.caseNum}</span>
                         <span className="text-[10px] text-slate-400">{n.province}</span>
                       </div>
                       <div className="text-[11px] font-medium text-slate-700 leading-snug">{n.title}</div>
                       <div className="text-[10px] text-slate-400 mt-1 flex items-center justify-between">
                         <span>{n.time}</span>
-                        <span className="text-[9px] text-[#1E4E8C] font-semibold hover:underline cursor-pointer">
+                        <span className="text-[9px] text-[#1B3F8B] font-semibold hover:underline cursor-pointer">
                           เปิดดูสำนวน →
                         </span>
                       </div>

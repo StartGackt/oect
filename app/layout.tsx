@@ -24,7 +24,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="th" className={kanit.variable}>
-      <body className="font-kanit antialiased bg-[#F8FAFC] text-[#0F172A] selection:bg-[#0D9488] selection:text-white">
+      <body className="font-kanit antialiased bg-[#F8FAFC] text-[#0F172A] selection:bg-[#FFD600] selection:text-[#1B3F8B]">
         {children}
       </body>
     </html>

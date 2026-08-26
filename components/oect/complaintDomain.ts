@@ -1,0 +1,126 @@
+export type SlaStatus = "NORMAL" | "NEAR_DUE" | "OVERDUE" | "COMPLETED";
+
+export interface ComplaintItem {
+  id: number;
+  electionType: string;
+  announcementDate: string;
+  caseNumber: string;
+  electionDate: string;
+  receivedDate: string;
+  constituency: string;
+  district: string;
+  province: string;
+  officer: string;
+  complainants: string;
+  respondent: string;
+  allegation: string;
+  details: string;
+  missionGroup: string;
+  currentStage: string;
+  currentSection: string;
+  stageId: number;
+  slaDays: number;
+  remainingDays: number;
+  slaStatus: SlaStatus;
+}
+
+export const ELECTION_TYPE_OPTIONS = [
+  { value: "สส.", label: "สมาชิกสภาผู้แทนราษฎร (สส.)", code: "MP" },
+  { value: "สว.", label: "สมาชิกวุฒิสภา (สว.)", code: "SEN" },
+  { value: "อบจ.", label: "องค์การบริหารส่วนจังหวัด (อบจ.)", code: "PAO" },
+  { value: "อบต.", label: "องค์การบริหารส่วนตำบล (อบต.)", code: "SAO" },
+  { value: "ทต.", label: "เทศบาล", code: "MUN" },
+  { value: "กทม.", label: "กรุงเทพมหานคร", code: "BKK" },
+  { value: "พัทยา", label: "เมืองพัทยา", code: "PTY" },
+  { value: "การออกเสียงประชามติ", label: "การออกเสียงประชามติ", code: "REF" },
+] as const;
+
+export const MISSION_GROUP_OPTIONS = [
+  "สืบสวนและไต่สวน",
+  "พรรคการเมือง",
+  "การจัดการเลือกตั้ง",
+  "บริหารทั่วไป",
+  "กระบวนการยุติธรรม",
+] as const;
+
+export const ALLEGATION_OPTIONS = [
+  "ซื้อเสียง/ให้เงินหรือทรัพย์สิน",
+  "จัดเลี้ยง/ให้ประโยชน์",
+  "หาเสียงใส่ร้าย/ข้อมูลอันอาจเป็นเท็จ",
+  "คุณสมบัติ/ลักษณะต้องห้ามผู้สมัคร",
+  "ข่มขู่/ใช้อิทธิพล",
+  "ป้าย/เอกสารหาเสียง",
+] as const;
+
+export const WORKFLOW_STEPS = [
+  { id: 1, title: "ตรวจคำร้องและมอบหมายผู้รับผิดชอบ", publicTitle: "ตรวจความครบถ้วนของคำร้อง", section: "สนง.กกต.จว.", slaLabel: "3 วัน", slaDays: 3 },
+  { id: 2, title: "ผอ.กกต.จว. พิจารณาสั่งรับ/ไม่รับ", publicTitle: "พิจารณาสั่งรับคำร้อง", section: "สนง.กกต.จว.", slaLabel: "3 วัน", slaDays: 3 },
+  { id: 3, title: "สืบสวนและไต่สวน", publicTitle: "สืบสวนและไต่สวน", section: "สนง.กกต.จว.", slaLabel: "20 วัน / สูงสุด 90 วัน", slaDays: 90 },
+  { id: 4, title: "ผอ.กกต.จว. มีความเห็นและส่งส่วนกลาง", publicTitle: "จัดส่งสำนวนให้ส่วนกลาง", section: "สนง.กกต.จว.", slaLabel: "ตามขั้นตอน", slaDays: null },
+  { id: 5, title: "ตรวจคำร้อง/สำนวนส่วนกลาง", publicTitle: "ตรวจคำร้องหรือสำนวนส่วนกลาง", section: "สนง.กกต. ส่วนกลาง", slaLabel: "คำร้อง 30 วัน / สำนวน 60 วัน", slaDays: 30 },
+  { id: 6, title: "ลธ.กกต. มีความเห็น", publicTitle: "เสนอความเห็นต่อผู้มีอำนาจ", section: "สนง.กกต. ส่วนกลาง", slaLabel: "คำร้อง 5 วัน / สำนวน 9 วัน", slaDays: 9 },
+  { id: 7, title: "คณะอนุวินิจฉัยมีความเห็น", publicTitle: "คณะอนุวินิจฉัยพิจารณา", section: "สนง.กกต. ส่วนกลาง", slaLabel: "90 วัน", slaDays: 90 },
+  { id: 8, title: "กกต. วินิจฉัยชี้ขาด", publicTitle: "กกต. พิจารณาวินิจฉัย", section: "สนง.กกต. ส่วนกลาง", slaLabel: "90 วัน", slaDays: 90 },
+  { id: 9, title: "จัดทำคำวินิจฉัย กกต.", publicTitle: "จัดทำคำวินิจฉัย", section: "สนง.กกต. ส่วนกลาง", slaLabel: "60 วัน", slaDays: 60 },
+  { id: 10, title: "แจ้งผู้ร้อง/ผู้ถูกร้องและปิดเรื่อง", publicTitle: "แจ้งผลและปิดเรื่อง", section: "สนง.กกต. ส่วนกลาง", slaLabel: "15 วัน", slaDays: 15 },
+] as const;
+
+export const CURRENT_CITIZEN = {
+  name: "นายศุภชัย ทดสอบ077",
+  shortName: "ศุภชัย ทดสอบ077",
+  initials: "ศท",
+  citizenIdMasked: "1-10**-*****-42-1",
+  phoneMasked: "08*-***-7824",
+  emailMasked: "sup***@mail.go.th",
+  province: "เชียงใหม่",
+  constituency: "เขตเลือกตั้งที่ 1",
+} as const;
+
+const PROVINCE_CODES: Record<string, string> = {
+  "กรุงเทพมหานคร": "BKK",
+  "เชียงใหม่": "CMI",
+  "ขอนแก่น": "KKN",
+  "นครราชสีมา": "NMA",
+  "สงขลา": "SKA",
+  "สุราษฎร์ธานี": "SNI",
+  "อุบลราชธานี": "UBN",
+};
+
+export function getProvinceCode(province: string) {
+  return PROVINCE_CODES[province] ?? "ECT";
+}
+
+export function formatThaiDate(value: string) {
+  if (!value) return "-";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+export function getOfficialSlaDays(stageId: number, fallback: number) {
+  return WORKFLOW_STEPS.find((step) => step.id === stageId)?.slaDays ?? fallback;
+}
+
+export function getWorkflowStep(stageId: number) {
+  return WORKFLOW_STEPS.find((step) => step.id === stageId) ?? WORKFLOW_STEPS[0];
+}
+
+export function getCaseKind(caseItem: ComplaintItem) {
+  return caseItem.stageId >= 4 ? "สำนวน" : "คำร้อง";
+}
+
+export function getPublicStatus(caseItem: ComplaintItem) {
+  if (caseItem.slaStatus === "COMPLETED") return "ดำเนินการแล้วเสร็จ";
+  if (caseItem.slaStatus === "OVERDUE") return "อยู่ระหว่างเร่งรัดดำเนินการ";
+  return getWorkflowStep(caseItem.stageId).publicTitle;
+}
+
+export function getSlaLabel(caseItem: ComplaintItem) {
+  if (caseItem.slaStatus === "COMPLETED") return "เสร็จสิ้น";
+  if (caseItem.slaStatus === "OVERDUE") return `เกิน ${Math.abs(caseItem.remainingDays)} วัน`;
+  return `เหลือ ${caseItem.remainingDays} วัน`;
+}

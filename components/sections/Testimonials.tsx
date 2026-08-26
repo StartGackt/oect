@@ -64,7 +64,7 @@ export default function Testimonials() {
                 </div>
 
                 <p className="text-xs sm:text-sm text-[#4B5563] font-light leading-relaxed mb-6">
-                  "{r.comment}"
+                  “{r.comment}”
                 </p>
               </div>
 
