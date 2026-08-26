@@ -162,21 +162,21 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
               </span>
               <div className={`grid grid-cols-1 gap-3 text-xs ${mode === "citizen" ? "sm:grid-cols-1" : "sm:grid-cols-3"}`}>
                 {mode === "officer" && <div>
-                  <label className="block text-[#4A5568] mb-1 font-medium">ประเภทเอกสาร *</label>
+                  <label className="block text-[#4A5568] mb-1 font-medium">ประเภทเอกสาร <RequiredMark /></label>
                   <select value={complaintKind} onChange={(e) => setComplaintKind(e.target.value)} className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3 py-2 text-xs focus:outline-none">
                     <option>คำร้อง</option>
                     <option>สำนวน</option>
                   </select>
                 </div>}
                 <div>
-                  <label className="block text-[#4A5568] mb-1 font-medium">สถานะผู้ยื่นตามข้อ 23(3) *</label>
+                  <label className="block text-[#4A5568] mb-1 font-medium">สถานะผู้ยื่นตามข้อ 23(3) <RequiredMark /></label>
                   <select value={userStatus} onChange={(e) => setUserStatus(e.target.value)} className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3 py-2 text-xs focus:outline-none">
                     <option>ผู้มีสิทธิเลือกตั้งในเขต</option>
                     <option>ผู้สมัครรับเลือกตั้งในเขต</option>
                   </select>
                 </div>
                 {mode === "officer" && <div>
-                  <label className="block text-[#4A5568] mb-1 font-medium">สถานที่ยื่น *</label>
+                  <label className="block text-[#4A5568] mb-1 font-medium">สถานที่ยื่น <RequiredMark /></label>
                   <select value={filingPlace} onChange={(e) => setFilingPlace(e.target.value)} className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3 py-2 text-xs focus:outline-none">
                     <option>สนง.กกต.จว.</option>
                     <option>สนง.กกต. (กรณีจำเป็น)</option>
@@ -185,7 +185,7 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
                 <div>
-                  <label className="block text-[#4A5568] mb-1 font-medium">ประเภทการเลือกตั้ง *</label>
+                  <label className="block text-[#4A5568] mb-1 font-medium">ประเภทการเลือกตั้ง <RequiredMark /></label>
                   <select
                     value={electionType}
                     onChange={(e) => setElectionType(e.target.value)}
@@ -195,7 +195,7 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[#4A5568] mb-1 font-medium">จังหวัด *</label>
+                  <label className="block text-[#4A5568] mb-1 font-medium">จังหวัด <RequiredMark /></label>
                   <input
                     type="text"
                     required
@@ -205,11 +205,11 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
                   />
                 </div>
                 <div>
-                  <label className="block text-[#4A5568] mb-1 font-medium">อำเภอ/เขต *</label>
+                  <label className="block text-[#4A5568] mb-1 font-medium">อำเภอ/เขต <RequiredMark /></label>
                   <input type="text" required value={district} onChange={(e) => setDistrict(e.target.value)} className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3 py-2 text-xs focus:outline-none" />
                 </div>
                 <div>
-                  <label className="block text-[#4A5568] mb-1 font-medium">เขตเลือกตั้ง *</label>
+                  <label className="block text-[#4A5568] mb-1 font-medium">เขตเลือกตั้ง <RequiredMark /></label>
                   <input
                     type="text"
                     required
@@ -221,11 +221,11 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
               </div>
               <div className="grid gap-3 text-xs sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block font-medium text-[#4A5568]">วันเลือกตั้ง *</label>
+                  <label className="mb-1 block font-medium text-[#4A5568]">วันเลือกตั้ง <RequiredMark /></label>
                   <input type="date" required value={electionDate} onChange={(event) => setElectionDate(event.target.value)} className="w-full rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-xs outline-none focus:border-blue-500" />
                 </div>
                 <div>
-                  <label className="mb-1 block font-medium text-[#4A5568]">วันประกาศผล *</label>
+                  <label className="mb-1 block font-medium text-[#4A5568]">วันประกาศผล <RequiredMark /></label>
                   <input type="date" required value={announcementDate} onChange={(event) => setAnnouncementDate(event.target.value)} className="w-full rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-xs outline-none focus:border-blue-500" />
                 </div>
               </div>
@@ -271,7 +271,7 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
               </span>
               <div className={`grid grid-cols-1 gap-3 text-xs ${mode === "officer" ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
                 <div>
-                  <label className="mb-1 block font-medium text-[#4A5568]">ข้อกล่าวหา * <span className="font-normal text-slate-400">(เลือกได้มากกว่า 1 รายการ)</span></label>
+                  <label className="mb-1 block font-medium text-[#4A5568]">ข้อกล่าวหา <RequiredMark /> <span className="font-normal text-slate-400">(เลือกได้มากกว่า 1 รายการ)</span></label>
                   <div className="grid gap-2 rounded-xl border border-slate-200 bg-white p-2 sm:grid-cols-2">
                     {ALLEGATION_OPTIONS.map((option) => {
                       const checked = selectedAllegations.includes(option);
@@ -302,7 +302,7 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
               </div>
 
               <div>
-                <label className="block text-xs text-[#4A5568] mb-1 font-medium">รายละเอียดพฤติการณ์โดยสังเขป *</label>
+                <label className="block text-xs text-[#4A5568] mb-1 font-medium">รายละเอียดพฤติการณ์โดยสังเขป <RequiredMark /></label>
                 <textarea
                   rows={3}
                   required
@@ -384,7 +384,7 @@ function PartyFields({
   return (
     <div>
       <div className="mb-2 flex items-start justify-between gap-3">
-        <div><label className="block font-medium text-[#4A5568]">{label} *</label><span className="text-[9px] text-slate-400">{helper}</span></div>
+        <div><label className="block font-medium text-[#4A5568]">{label} <RequiredMark /></label><span className="text-[9px] text-slate-400">{helper}</span></div>
         <button type="button" onClick={() => onChange([...values, ""])} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-blue-50 px-2 py-1 text-[9px] font-bold text-blue-700 hover:bg-blue-100"><Plus className="h-3 w-3" /> เพิ่มรายชื่อ</button>
       </div>
       <div className="space-y-2">
@@ -404,4 +404,8 @@ function PartyFields({
       </div>
     </div>
   );
+}
+
+function RequiredMark() {
+  return <span aria-hidden="true" className="ml-0.5 font-bold text-rose-600">*</span>;
 }

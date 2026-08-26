@@ -23,20 +23,12 @@ import {
 type Gateway = "user" | "admin";
 type LoginMethod = "password" | "thaid";
 
-const OFFICER_ACCESS_OPTIONS = [
-  { value: "intake", label: "พนักงานรับและบันทึกคำร้อง" },
-  { value: "director", label: "ผอ.สนง.กกต.จว." },
-  { value: "commission", label: "กกต. / ลธ.กกต. ส่วนกลาง" },
-  { value: "admin", label: "ผู้ดูแลระบบ (System Admin)" },
-] as const;
-
 export default function LoginPage() {
   const router = useRouter();
   const [selectedGateway, setSelectedGateway] = useState<Gateway>("user");
   const [loginMethod, setLoginMethod] = useState<LoginMethod>("password");
   const [username, setUsername] = useState("citizen_thaid");
   const [identityStatus, setIdentityStatus] = useState("ผู้มีสิทธิเลือกตั้งในเขต");
-  const [officerRole, setOfficerRole] = useState("intake");
   const [password, setPassword] = useState("demo-password");
   const [otp, setOtp] = useState("291846");
   const [showPassword, setShowPassword] = useState(false);
@@ -46,18 +38,14 @@ export default function LoginPage() {
     event.preventDefault();
     setIsLoading(true);
     window.setTimeout(() => {
-      router.push(selectedGateway === "user"
-        ? "/user?view=citizen"
-        : officerRole === "admin" ? "/admin" : `/user?role=${officerRole}`);
+      router.push(selectedGateway === "user" ? "/user?view=citizen" : "/admin");
     }, 550);
   };
 
-  const handleDemoLogin = (destination: "citizen" | "officer") => {
+  const handleDemoLogin = (destination: "citizen" | "admin") => {
     setIsLoading(true);
     window.setTimeout(() => {
-      router.push(destination === "citizen"
-        ? "/user?view=citizen"
-        : officerRole === "admin" ? "/admin" : `/user?role=${officerRole}`);
+      router.push(destination === "citizen" ? "/user?view=citizen" : "/admin");
     }, 350);
   };
 
@@ -100,8 +88,8 @@ export default function LoginPage() {
                   <span className="text-[10px] font-semibold leading-4 text-[#1B3F8B]">สำนักงานคณะกรรมการ<br />การเลือกตั้ง</span>
                 </div>
                 <p className="text-[11px] font-semibold uppercase tracking-[.16em] text-[#4FB3E8]">Secure sign in</p>
-                <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[1.7rem]">{selectedGateway === "user" ? "บริการสำหรับผู้ร้องเรียน" : "ระบบงานเจ้าหน้าที่"}</h2>
-                <p className="mt-1.5 text-xs font-light leading-5 text-slate-500">{selectedGateway === "user" ? "ยื่นคำร้อง ติดตาม แก้ไขเอกสาร และรับผลการพิจารณา" : "จัดการคำร้อง สำนวน Workflow และการกำกับระบบ"}</p>
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950 sm:text-[1.7rem]">{selectedGateway === "user" ? "บริการสำหรับผู้ร้องเรียน" : "ศูนย์ผู้ดูแลระบบ"}</h2>
+                <p className="mt-1.5 text-xs font-light leading-5 text-slate-500">{selectedGateway === "user" ? "ยื่นคำร้อง ติดตาม แก้ไขเอกสาร และรับผลการพิจารณา" : "บัญชีผู้ดูแลสิทธิ์เต็มสำหรับกำกับข้อมูล Workflow ผู้ใช้ และความปลอดภัย"}</p>
               </div>
               <span className="mt-1 inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#4FB3E8]/10 px-2.5 py-1 text-[10px] font-medium text-[#1B3F8B] ring-1 ring-[#4FB3E8]/35">
                 <LockKeyhole className="h-3 w-3" /> ปลอดภัย
@@ -110,7 +98,7 @@ export default function LoginPage() {
 
             <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1.5" role="tablist" aria-label="เลือกประเภทระบบงาน">
               <GatewayTab active={selectedGateway === "user"} onClick={() => setSelectedGateway("user")} icon={<UserRound className="h-4 w-4" />} label="ผู้ร้องเรียน" detail="ยื่นและติดตามคำร้อง" />
-              <GatewayTab active={selectedGateway === "admin"} onClick={() => setSelectedGateway("admin")} icon={<Building2 className="h-4 w-4" />} label="เจ้าหน้าที่ / ผู้ดูแล" detail="จัดการคำร้องและระบบ" tone="gold" />
+              <GatewayTab active={selectedGateway === "admin"} onClick={() => setSelectedGateway("admin")} icon={<Building2 className="h-4 w-4" />} label="ผู้ดูแลระบบ" detail="สิทธิ์เต็มทุกเมนู" tone="gold" />
             </div>
 
             {selectedGateway === "user" ? (
@@ -173,13 +161,7 @@ export default function LoginPage() {
               <form onSubmit={handleLogin} className="mt-6 grid gap-4 md:grid-cols-2">
                 <div className="flex items-start gap-3 rounded-2xl border border-[#FFD600] bg-[#FFD600]/10 p-3.5 text-[10px] leading-5 text-[#1B3F8B] md:col-span-2">
                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#1B3F8B]" />
-                  สำหรับเจ้าหน้าที่ผู้รับผิดชอบการรับเรื่อง ตรวจสอบ สั่งการ สืบสวน วินิจฉัย และผู้ดูแลระบบเท่านั้น
-                </div>
-                <div>
-                  <label htmlFor="officer-role" className="mb-1.5 block text-[11px] font-medium text-slate-700">บทบาทเจ้าหน้าที่</label>
-                  <select id="officer-role" value={officerRole} onChange={(event) => setOfficerRole(event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-800 outline-none transition focus:border-[#FFD600] focus:bg-white focus:ring-4 focus:ring-[#FFD600]/20">
-                    {OFFICER_ACCESS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
+                  บัญชี System Admin เป็นสิทธิ์เดียวของหลังบ้าน สามารถเข้าถึงภาพรวม รายการเรื่อง ผู้ใช้ Workflow ข้อมูลพื้นฐาน ระบบเชื่อมโยง และ Audit
                 </div>
                 <Field id="admin-account" label="บัญชีเจ้าหน้าที่ / ผู้ดูแลระบบ" icon={<UserRound className="h-4 w-4" />}>
                   <input id="admin-account" type="text" required autoComplete="username" defaultValue="admin_root" className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-xs outline-none transition focus:border-[#FFD600] focus:bg-white focus:ring-4 focus:ring-[#FFD600]/20" />
@@ -194,7 +176,7 @@ export default function LoginPage() {
                   {isLoading ? "กำลังตรวจสอบสิทธิ์..." : "เข้าสู่ระบบงานเจ้าหน้าที่"}
                   <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
                 </button>
-                <button type="button" onClick={() => handleDemoLogin("officer")} className="w-full text-center text-[10px] font-medium text-[#1B3F8B] hover:underline md:col-span-2">ทดลองระบบตามบทบาทที่เลือก</button>
+                <button type="button" onClick={() => handleDemoLogin("admin")} className="w-full text-center text-[10px] font-medium text-[#1B3F8B] hover:underline md:col-span-2">ทดลองศูนย์ผู้ดูแลระบบ</button>
               </form>
             )}
 

@@ -15,7 +15,6 @@ import {
   FileText,
   History,
   Layers3,
-  LockKeyhole,
   LogOut,
   Menu,
   MessageSquareText,
@@ -38,6 +37,7 @@ import RoleWorkspaceView, { OFFICER_ROLES } from "@/components/oect/RoleWorkspac
 import SlaMonitoringView from "@/components/oect/SlaMonitoringView";
 import WorkflowVisualizer from "@/components/oect/WorkflowVisualizer";
 import { CURRENT_CITIZEN, type ComplaintItem } from "@/components/oect/complaintDomain";
+import { useComplaintsStore } from "@/components/oect/useComplaintsStore";
 
 type PortalView = "dashboard" | "workspace" | "cases" | "workflow" | "sla" | "citizen" | "governance" | "integrations";
 
@@ -202,7 +202,7 @@ const INTEGRATIONS = [
 ];
 
 export default function UserPortalPage() {
-  const [cases, setCases] = useState<ComplaintItem[]>(initialCasesData as ComplaintItem[]);
+  const [cases, setCases] = useComplaintsStore(initialCasesData as ComplaintItem[]);
   const [activeView, setActiveView] = useState<PortalView>("citizen");
   const [selectedCase, setSelectedCase] = useState<ComplaintItem | null>(null);
   const [selectedCaseReadOnly, setSelectedCaseReadOnly] = useState(false);
@@ -377,7 +377,6 @@ export default function UserPortalPage() {
               activeView={activeView}
               onSelect={selectView}
               citizenOnly={isCitizenPortal}
-              roleId={selectedRoleId}
               citizenTab={citizenTab}
               citizenFormOpen={isCitizenFormOpen}
               citizenActionCount={citizenActionCount}
@@ -394,7 +393,6 @@ export default function UserPortalPage() {
             activeView={activeView}
             onSelect={selectView}
             citizenOnly={isCitizenPortal}
-            roleId={selectedRoleId}
             citizenTab={citizenTab}
             citizenFormOpen={isCitizenFormOpen}
             citizenActionCount={citizenActionCount}
@@ -418,13 +416,6 @@ export default function UserPortalPage() {
                 </div>
               </div>
             )}
-            {!isCitizenPortal && <Link
-              href="/admin"
-              className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              <span className="flex items-center gap-2"><LockKeyhole className="h-4 w-4" /> ศูนย์ผู้ดูแลระบบ</span>
-              <ChevronRight className="h-4 w-4" />
-            </Link>}
           </div>
         </aside>
 
@@ -544,7 +535,7 @@ export default function UserPortalPage() {
             />
           ))}
 
-          {activeView === "governance" && <GovernanceCenterView />}
+          {activeView === "governance" && <GovernanceCenterView cases={cases} />}
 
           {activeView === "integrations" && (
             <div className="grid gap-4 lg:grid-cols-3">
@@ -607,7 +598,6 @@ function PortalNavigation({
   activeView,
   onSelect,
   citizenOnly = false,
-  roleId,
   citizenTab = "overview",
   citizenFormOpen = false,
   citizenActionCount = 0,
@@ -616,7 +606,6 @@ function PortalNavigation({
   activeView: PortalView;
   onSelect: (view: PortalView) => void;
   citizenOnly?: boolean;
-  roleId: string;
   citizenTab?: CitizenTab;
   citizenFormOpen?: boolean;
   citizenActionCount?: number;
@@ -657,7 +646,7 @@ function PortalNavigation({
   }
 
   const officerViews: PortalView[] = ["dashboard", "workspace", "cases", "workflow", "sla"];
-  const allowedViews = roleId === "admin" ? NAV_ITEMS.map((item) => item.id) : officerViews;
+  const allowedViews = officerViews;
   return (
     <nav className="space-y-1.5" aria-label="เมนูระบบงานหลัก">
       {NAV_ITEMS.filter((item) => allowedViews.includes(item.id)).map((item) => {

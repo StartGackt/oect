@@ -39,8 +39,9 @@ export const OFFICER_ROLES = [
   { id: "subcommittee", label: "เลขาคณะอนุวินิจฉัย", scope: "โอนเรื่อง นัดประชุม และบันทึกความเห็น", stage: "คณะอนุวินิจฉัย" },
   { id: "commission", label: "กกต.", scope: "พิจารณาและวินิจฉัยชี้ขาด", stage: "กกต. วินิจฉัย" },
   { id: "secretary", label: "ลธ.กกต. จัดทำคำวินิจฉัย", scope: "จัดทำคำวินิจฉัยและแจ้งผล", stage: "จัดทำและแจ้งคำวินิจฉัย" },
-  { id: "admin", label: "ผู้ดูแลระบบ", scope: "Workflow, SLA, User และ Role", stage: "กำกับระบบ" },
 ] as const;
+
+const ADMIN_ROLE = { id: "admin", label: "ผู้ดูแลระบบ", scope: "ตรวจสอบคิวงานได้ทุกขั้นตอน", stage: "ทุกขั้นตอน" } as const;
 
 const WORKFLOW_OWNERS = ["พนง./พสต.", "ลธ./ผอ.", "คณะสืบสวนฯ", "ผอ.กกต.จว.", "4 ลำดับชั้น", "ลธ.กกต.", "คณะอนุฯ", "กกต.", "ลธ.กกต.", "ผอ./เจ้าของเรื่อง"];
 const WORKFLOW_STEPS = DOMAIN_WORKFLOW_STEPS.map((step, index) => ({ short: step.publicTitle, owner: WORKFLOW_OWNERS[index], sla: step.slaLabel }));
@@ -71,7 +72,7 @@ export default function RoleWorkspaceView({ cases, roleId, onSelectCase }: RoleW
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [checkedItems, setCheckedItems] = useState<number[]>([0, 1, 2, 4]);
 
-  const role = OFFICER_ROLES.find((item) => item.id === roleId) ?? OFFICER_ROLES[0];
+  const role = roleId === "admin" ? ADMIN_ROLE : OFFICER_ROLES.find((item) => item.id === roleId) ?? OFFICER_ROLES[0];
   const roleCases = useMemo(
     () =>
       [...cases]
@@ -218,6 +219,7 @@ export default function RoleWorkspaceView({ cases, roleId, onSelectCase }: RoleW
             checkedItems={checkedItems}
             onToggleCheck={(index) => setCheckedItems((current) => current.includes(index) ? current.filter((item) => item !== index) : [...current, index])}
             onSubmit={submitAction}
+            adminStats={{ workflowSteps: WORKFLOW_STEPS.length, openCases: roleCases.length, officers: new Set(cases.map((item) => item.officer)).size }}
           />
         </div>
       </section>
@@ -245,11 +247,13 @@ function RoleTaskPanel({
   checkedItems,
   onToggleCheck,
   onSubmit,
+  adminStats,
 }: {
   roleId: string;
   checkedItems: number[];
   onToggleCheck: (index: number) => void;
   onSubmit: (message: string) => void;
+  adminStats: { workflowSteps: number; openCases: number; officers: number };
 }) {
   if (roleId === "review-1" || roleId === "intake") {
     return (
@@ -381,9 +385,9 @@ function RoleTaskPanel({
   return (
     <TaskShell icon={ShieldCheck} title="กำกับ Workflow, SLA และสิทธิ์ผู้ใช้งาน" subtitle="การเปลี่ยนกฎทุกครั้งต้องมีเวอร์ชัน ผู้อนุมัติ และ Audit event">
       <div className="grid gap-3 md:grid-cols-3">
-        <SummaryCard label="Workflow ที่เผยแพร่" value="12 เวอร์ชัน" tone="blue" />
-        <SummaryCard label="ผู้ใช้งานเจ้าหน้าที่" value="1,284 บัญชี" tone="green" />
-        <SummaryCard label="คำขอสิทธิ์รออนุมัติ" value="7 รายการ" tone="amber" />
+        <SummaryCard label="ขั้นตอน Workflow กลาง" value={`${adminStats.workflowSteps} ขั้นตอน`} tone="blue" />
+        <SummaryCard label="คิวงานที่ยังไม่ปิด" value={`${adminStats.openCases} เรื่อง`} tone="amber" />
+        <SummaryCard label="ผู้รับผิดชอบในทะเบียน" value={`${adminStats.officers} คน`} tone="green" />
       </div>
       <ActionBar><button type="button" onClick={() => onSubmit("เปิดหน้าร่าง Workflow ใหม่ในโหมดตรวจทานแล้ว")} className="btn-primary"><PlusCircle className="h-4 w-4" /> สร้าง Workflow version</button></ActionBar>
     </TaskShell>
