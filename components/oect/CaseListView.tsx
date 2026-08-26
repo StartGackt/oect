@@ -47,17 +47,21 @@ interface CaseListViewProps {
   cases: ComplaintItem[];
   onSelectCase: (c: ComplaintItem) => void;
   openNewModal: () => void;
-  searchQuery: string;
-  setSearchQuery: (q: string) => void;
+  searchQuery?: string;
+  setSearchQuery?: (q: string) => void;
 }
 
 export default function CaseListView({
   cases,
   onSelectCase,
   openNewModal,
-  searchQuery,
-  setSearchQuery,
+  searchQuery: externalSearchQuery,
+  setSearchQuery: externalSetSearchQuery,
 }: CaseListViewProps) {
+  const [internalSearchQuery, setInternalSearchQuery] = useState<string>("");
+  const searchQuery = externalSearchQuery !== undefined ? externalSearchQuery : internalSearchQuery;
+  const setSearchQuery = externalSetSearchQuery || setInternalSearchQuery;
+
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [selectedProvince, setSelectedProvince] = useState<string>("ALL");
   const [selectedMission, setSelectedMission] = useState<string>("ALL");

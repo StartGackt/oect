@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Prompt } from "next/font/google";
+import { Kanit } from "next/font/google";
 import "./globals.css";
 
-const prompt = Prompt({
+const kanit = Kanit({
   subsets: ["latin", "thai"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-prompt",
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-kanit",
   display: "swap",
 });
 
@@ -23,8 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="th" className={prompt.variable}>
-      <body className="font-prompt antialiased bg-[#F4F7FA] text-[#1A202C] selection:bg-[#173B6B] selection:text-white">
+    <html lang="th" className={kanit.variable}>
+      <body className="font-kanit antialiased bg-[#F8FAFC] text-[#0F172A] selection:bg-[#0D9488] selection:text-white">
         {children}
       </body>
     </html>

@@ -1,73 +1,178 @@
+@import url('https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
 @import "tailwindcss";
 
 :root {
-  --oect-blue-900: #0B1E36;
-  --oect-blue-800: #102A4C;
-  --oect-blue-700: #173B6B;
-  --oect-blue-600: #1E4E8C;
-  --oect-blue-500: #2B6CB0;
-  --oect-blue-100: #EBF8FF;
-  --oect-gold-500: #D69E2E;
-  --oect-gold-400: #ECC94B;
-  --oect-gold-100: #FEFCBF;
-  --oect-bg: #F4F7FA;
+  --oect-teal-900: #042f2e;
+  --oect-teal-800: #115e59;
+  --oect-teal-700: #0f766e;
+  --oect-teal-600: #0d9488;
+  --oect-teal-500: #14b8a6;
+  --oect-teal-100: #ccfbf1;
+  --oect-teal-50: #f0fdfa;
+  
+  --oect-navy-950: #071326;
+  --oect-navy-900: #0B1E36;
+  --oect-navy-800: #102A4C;
+  --oect-navy-700: #173B6B;
+  --oect-navy-600: #1E4E8C;
+
+  --oect-bg: #F8FAFC;
   --oect-surface: #FFFFFF;
   --oect-border: #E2E8F0;
-  --oect-text-main: #1A202C;
-  --oect-text-muted: #718096;
+  --oect-text-main: #0F172A;
+  --oect-text-muted: #64748B;
 }
 
 @theme inline {
-  --color-oect-blue-900: var(--oect-blue-900);
-  --color-oect-blue-800: var(--oect-blue-800);
-  --color-oect-blue-700: var(--oect-blue-700);
-  --color-oect-blue-600: var(--oect-blue-600);
-  --color-oect-gold-500: var(--oect-gold-500);
-  --color-oect-gold-400: var(--oect-gold-400);
+  --color-oect-teal-900: var(--oect-teal-900);
+  --color-oect-teal-800: var(--oect-teal-800);
+  --color-oect-teal-700: var(--oect-teal-700);
+  --color-oect-teal-600: var(--oect-teal-600);
+  --color-oect-teal-500: var(--oect-teal-500);
+  --color-oect-teal-100: var(--oect-teal-100);
+  --color-oect-teal-50: var(--oect-teal-50);
   --color-oect-bg: var(--oect-bg);
-  --font-prompt: var(--font-prompt);
+  --font-kanit: var(--font-kanit), 'Kanit', sans-serif;
 }
 
 html {
   scroll-behavior: smooth;
+  font-family: var(--font-kanit), 'Kanit', sans-serif;
 }
 
 body {
-  background-color: var(--oect-bg);
-  color: var(--oect-text-main);
-  font-family: var(--font-prompt), 'Prompt', -apple-system, BlinkMacSystemFont, 'Sarabun', sans-serif;
+  background-color: #F8FAFC;
+  color: #0F172A;
+  font-family: var(--font-kanit), 'Kanit', sans-serif;
   font-weight: 300;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom OECT Government Header Gradient */
-.oect-header-gradient {
-  background: linear-gradient(135deg, #0B1E36 0%, #173B6B 60%, #1E4E8C 100%);
+/* Kanit Font Weight Utility Classes */
+.kanit-thin {
+  font-family: "Kanit", sans-serif;
+  font-weight: 100;
+  font-style: normal;
 }
 
-.oect-card {
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  border-radius: 1rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+.kanit-extralight {
+  font-family: "Kanit", sans-serif;
+  font-weight: 200;
+  font-style: normal;
 }
 
-/* Custom scrollbars */
+.kanit-light {
+  font-family: "Kanit", sans-serif;
+  font-weight: 300;
+  font-style: normal;
+}
+
+.kanit-regular {
+  font-family: "Kanit", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.kanit-medium {
+  font-family: "Kanit", sans-serif;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.kanit-semibold {
+  font-family: "Kanit", sans-serif;
+  font-weight: 600;
+  font-style: normal;
+}
+
+.kanit-bold {
+  font-family: "Kanit", sans-serif;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.kanit-extrabold {
+  font-family: "Kanit", sans-serif;
+  font-weight: 800;
+  font-style: normal;
+}
+
+.kanit-black {
+  font-family: "Kanit", sans-serif;
+  font-weight: 900;
+  font-style: normal;
+}
+
+.kanit-thin-italic {
+  font-family: "Kanit", sans-serif;
+  font-weight: 100;
+  font-style: italic;
+}
+
+.kanit-extralight-italic {
+  font-family: "Kanit", sans-serif;
+  font-weight: 200;
+  font-style: italic;
+}
+
+.kanit-light-italic {
+  font-family: "Kanit", sans-serif;
+  font-weight: 300;
+  font-style: italic;
+}
+
+.kanit-regular-italic {
+  font-family: "Kanit", sans-serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.kanit-medium-italic {
+  font-family: "Kanit", sans-serif;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.kanit-semibold-italic {
+  font-family: "Kanit", sans-serif;
+  font-weight: 600;
+  font-style: italic;
+}
+
+.kanit-bold-italic {
+  font-family: "Kanit", sans-serif;
+  font-weight: 700;
+  font-style: italic;
+}
+
+.kanit-extrabold-italic {
+  font-family: "Kanit", sans-serif;
+  font-weight: 800;
+  font-style: italic;
+}
+
+.kanit-black-italic {
+  font-family: "Kanit", sans-serif;
+  font-weight: 900;
+  font-style: italic;
+}
+
+/* Custom Sleek Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #F4F7FA;
+  background: #F1F5F9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E0;
-  border-radius: 3px;
+  background: #CBD5E1;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #A0AEC0;
+  background: #94A3B8;
 }

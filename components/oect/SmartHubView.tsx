@@ -25,7 +25,9 @@ import {
   BookOpen,
   Zap,
   Mic,
-  Plus
+  Plus,
+  Flame,
+  Calendar
 } from "lucide-react";
 import { UserRole } from "./Header";
 
@@ -107,16 +109,17 @@ export default function SmartHubView({
   const overdueCount = cases.filter((c) => c.slaStatus === "OVERDUE").length;
   const nearDueCount = cases.filter((c) => c.slaStatus === "NEAR_DUE").length;
   const completedCount = cases.filter((c) => c.slaStatus === "COMPLETED").length;
+  const normalCount = cases.filter((c) => c.slaStatus === "NORMAL").length;
 
-  // 4 Smart Action Cards (Style from Screenshot)
+  // 4 Smart Action Cards
   const actionCards = [
     {
       id: "overdue",
       title: "ตรวจสอบเรื่องเร่งด่วน & เกิน SLA",
       desc: `มี ${overdueCount} เรื่องที่เกินกำหนด และ ${nearDueCount} เรื่องใกล้ครบกำหนดเวลาตามระเบียบ`,
       icon: ShieldAlert,
-      iconColor: "text-red-500",
-      bgColor: "bg-red-50 hover:bg-red-100/60 border-red-200/80",
+      iconColor: "text-rose-500",
+      bgColor: "bg-rose-50/70 hover:bg-rose-100/80 border-rose-200/80",
       action: () => {
         setActiveFilter("OVERDUE");
         setSearchPrompt("");
@@ -128,16 +131,16 @@ export default function SmartHubView({
       desc: "ออกเลขรับอัตโนมัติ ตรวจสอบสิทธิผู้ร้องในเขตเลือกตั้ง และมอบหมายผู้รับผิดชอบ",
       icon: PlusCircle,
       iconColor: "text-blue-600",
-      bgColor: "bg-blue-50 hover:bg-blue-100/60 border-blue-200/80",
+      bgColor: "bg-blue-50/70 hover:bg-blue-100/80 border-blue-200/80",
       action: openNewModal,
     },
     {
       id: "workflow",
-      title: "ดูขั้นตอนดำเนินงาน 11 ขั้นตอน",
-      desc: "แผนผัง Workflow กฎหมาย กกต. ฉบับที่ ๓ ตั้งแต่ยื่นคำร้องจนถึง กกต. วินิจฉัยชี้ขาด",
+      title: "ดูขั้นตอนดำเนินงาน 10 ขั้นตอน",
+      desc: "แผนผัง Workflow กฎหมาย กกต. ตั้งแต่ยื่นคำร้องจนถึง กกต. วินิจฉัยชี้ขาด",
       icon: Scale,
       iconColor: "text-purple-600",
-      bgColor: "bg-purple-50 hover:bg-purple-100/60 border-purple-200/80",
+      bgColor: "bg-purple-50/70 hover:bg-purple-100/80 border-purple-200/80",
       action: onOpenWorkflow,
     },
     {
@@ -146,7 +149,7 @@ export default function SmartHubView({
       desc: "รายงาน Top 10 จังหวัด, กราฟสัดส่วนข้อกล่าวหา และสถิติ 5 กลุ่มภารกิจหลัก",
       icon: BarChart3,
       iconColor: "text-amber-600",
-      bgColor: "bg-amber-50 hover:bg-amber-100/60 border-amber-200/80",
+      bgColor: "bg-amber-50/70 hover:bg-amber-100/80 border-amber-200/80",
       action: () => {
         setActiveFilter("ALL");
         setSearchPrompt("");
@@ -155,25 +158,77 @@ export default function SmartHubView({
   ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 py-6 sm:py-10 px-4 sm:px-6">
+    <div className="space-y-8 py-2">
       
-      {/* 1. Hero Greeting Section (Exact Style: Hello, [Name] / What would you like to do?) */}
-      <div className="space-y-2 text-left sm:pt-4">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>ระบบบริหารจัดการเรื่องร้องเรียน สนง.กกต. (ECT-CMS)</span>
+      {/* 1. Hero Greeting Section */}
+      <div className="bg-gradient-to-br from-white via-slate-50 to-blue-50/40 p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>ศูนย์ปฏิบัติการเรื่องร้องเรียนอัจฉริยะ (ECT Smart Hub)</span>
+          </div>
+
+          <div className="text-xs text-slate-500 flex items-center gap-2">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <span>ฐานข้อมูลสำนวนปี 2569</span>
+          </div>
         </div>
 
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#0B1E36] tracking-tight">
-          สวัสดีครับ, <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#173B6B] via-[#1E4E8C] to-[#2B6CB0]">{currentRole.name.split(" ")[0]}</span>
-        </h1>
+        <div className="space-y-1.5">
+          <h1 className="text-2xl sm:text-4xl font-bold text-[#0B1E36] tracking-tight">
+            สวัสดีครับ, <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#173B6B] via-[#1E4E8C] to-[#2B6CB0]">{currentRole.name.split(" ")[0]}</span>
+          </h1>
 
-        <p className="text-base sm:text-xl text-[#718096] font-light">
-          วันนี้ต้องการให้ระบบช่วยจัดการเรื่องร้องเรียน หรือติดตามสำนวนใดบ้างครับ?
-        </p>
+          <p className="text-sm sm:text-base text-slate-600 font-light">
+            วันนี้ต้องการให้ระบบช่วยจัดการเรื่องร้องเรียน ติดตามสำนวนเร่งด่วน หรือออกเลขรับคำร้องใหม่ครับ?
+          </p>
+        </div>
+
+        {/* Quick KPI stats strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-200/60">
+          <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase">สำนวนทั้งหมด</div>
+              <div className="text-lg font-bold text-slate-900">{cases.length}</div>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs">
+              คดี
+            </div>
+          </div>
+
+          <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-bold text-emerald-600 uppercase">กรอบเวลาปกติ</div>
+              <div className="text-lg font-bold text-emerald-700">{normalCount}</div>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+          </div>
+
+          <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-bold text-amber-600 uppercase">ใกล้ครบกำหนด</div>
+              <div className="text-lg font-bold text-amber-700">{nearDueCount}</div>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Clock className="w-4 h-4" />
+            </div>
+          </div>
+
+          <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-bold text-rose-600 uppercase">เกินกำหนด SLA</div>
+              <div className="text-lg font-bold text-rose-700">{overdueCount}</div>
+            </div>
+            <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+              <ShieldAlert className="w-4 h-4" />
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* 2. 4 Quick Action Cards (Clean Cards Style from Screenshot) */}
+      {/* 2. 4 Action Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {actionCards.map((card) => {
           const Icon = card.icon;
@@ -184,16 +239,16 @@ export default function SmartHubView({
               className={`p-5 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between group shadow-xs hover:shadow-md hover:-translate-y-0.5 ${card.bgColor}`}
             >
               <div className="space-y-2">
-                <h3 className="text-sm font-bold text-[#1A202C] leading-snug group-hover:text-[#1E4E8C] transition-colors">
+                <h3 className="text-sm font-bold text-slate-900 leading-snug group-hover:text-[#1E4E8C] transition-colors">
                   {card.title}
                 </h3>
-                <p className="text-xs text-[#64748B] font-light leading-relaxed">
+                <p className="text-xs text-slate-600 font-light leading-relaxed">
                   {card.desc}
                 </p>
               </div>
 
               <div className="pt-4 flex justify-end">
-                <div className="w-9 h-9 rounded-xl bg-white shadow-2xs border border-[#E2E8F0] flex items-center justify-center transition-transform group-hover:scale-110">
+                <div className="w-9 h-9 rounded-xl bg-white shadow-2xs border border-slate-200 flex items-center justify-center transition-transform group-hover:scale-110">
                   <Icon className={`w-4 h-4 ${card.iconColor}`} />
                 </div>
               </div>
@@ -202,21 +257,21 @@ export default function SmartHubView({
         })}
       </div>
 
-      {/* 3. Smart Command & Search Box (Clean Prompt Bar at Center) */}
-      <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-md p-3 sm:p-4 space-y-3">
+      {/* 3. Search & Filter Bar */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-4 sm:p-5 space-y-3.5">
         <div className="relative flex items-center">
-          <Search className="w-4 h-4 text-[#94A3B8] absolute left-3.5" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-4" />
           <input
             type="text"
-            placeholder="ค้นหาเลขที่คำร้อง (เช่น MP-CMI-2569-001), ชื่อผู้ร้อง, ผู้ถูกร้อง, ข้อกล่าวหา, หรือพิมพ์คำสั่ง..."
+            placeholder="ค้นหาเลขที่คำร้อง (เช่น MP-CMI-2569-001), ผู้ร้อง, ผู้ถูกร้อง, ข้อกล่าวหา, จังหวัด หรือพิมพ์คำสำคัญ..."
             value={searchPrompt}
             onChange={(e) => setSearchPrompt(e.target.value)}
-            className="w-full pl-10 pr-12 py-3 text-xs sm:text-sm bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl focus:outline-none focus:border-[#1E4E8C] focus:bg-white transition-all text-[#1A202C]"
+            className="w-full pl-11 pr-14 py-3 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#173B6B] focus:bg-white transition-all text-slate-900"
           />
           {searchPrompt && (
             <button
               onClick={() => setSearchPrompt("")}
-              className="absolute right-3.5 text-xs text-[#94A3B8] hover:text-[#1A202C]"
+              className="absolute right-4 text-xs font-semibold text-slate-400 hover:text-slate-700 bg-slate-200 px-2 py-0.5 rounded"
             >
               ล้าง
             </button>
@@ -224,15 +279,15 @@ export default function SmartHubView({
         </div>
 
         {/* Quick Search Badges & Filters */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="text-[11px] text-[#94A3B8] font-medium mr-1">แท็กด่วน:</span>
+            <span className="text-[11px] text-slate-400 font-bold mr-1">แท็กด่วน:</span>
             {[
-              { label: "ทั้งหมด (300)", filter: "ALL" },
+              { label: `ทั้งหมด (${cases.length})`, filter: "ALL" },
               { label: `🔴 เกิน SLA (${overdueCount})`, filter: "OVERDUE" },
               { label: `🟡 ใกล้ครบกำหนด (${nearDueCount})`, filter: "NEAR_DUE" },
               { label: "🔍 งานสืบสวนและไต่สวน", filter: "สืบสวน" },
-              { label: "⚪ เสร็จสิ้น", filter: "COMPLETED" },
+              { label: `⚪ เสร็จสิ้น (${completedCount})`, filter: "COMPLETED" },
             ].map((tag) => (
               <button
                 key={tag.filter}
@@ -240,10 +295,10 @@ export default function SmartHubView({
                   setActiveFilter(tag.filter);
                   setSearchPrompt("");
                 }}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
                   activeFilter === tag.filter
                     ? "bg-[#173B6B] text-white shadow-2xs"
-                    : "bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
                 {tag.label}
@@ -251,26 +306,26 @@ export default function SmartHubView({
             ))}
           </div>
 
-          <div className="text-[11px] text-[#94A3B8] hidden sm:inline">
-            แสดงผล <strong className="text-[#1A202C]">{filteredCases.length}</strong> รายการ
+          <div className="text-[11px] text-slate-500">
+            แสดงผล <strong className="text-slate-900">{filteredCases.length}</strong> จาก {cases.length} รายการ
           </div>
         </div>
       </div>
 
-      {/* 4. Streamlined Clean Case Cards Grid (Easy to Read, Clean & Intuitive) */}
+      {/* 4. Cases Cards Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-4 bg-[#173B6B] rounded-full" />
-            <h2 className="text-sm sm:text-base font-semibold text-[#1A202C]">
-              รายการเรื่องร้องเรียนที่พบ ({filteredCases.length} เรื่อง)
+            <h2 className="text-sm sm:text-base font-bold text-slate-900">
+              รายการสำนวนเรื่องร้องเรียน ({filteredCases.length} เรื่อง)
             </h2>
           </div>
 
           {activeFilter !== "ALL" && (
             <button
               onClick={() => setActiveFilter("ALL")}
-              className="text-xs text-[#1E4E8C] font-medium hover:underline"
+              className="text-xs text-[#1E4E8C] font-semibold hover:underline"
             >
               แสดงทั้งหมด
             </button>
@@ -278,17 +333,17 @@ export default function SmartHubView({
         </div>
 
         {filteredCases.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] p-12 text-center text-[#94A3B8] text-xs space-y-2">
-            <Search className="w-6 h-6 mx-auto text-[#CBD5E1]" />
-            <p>ไม่พบรายการที่ตรงกับคำค้นหา "{searchPrompt}"</p>
+          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 text-xs space-y-2">
+            <Search className="w-6 h-6 mx-auto text-slate-300" />
+            <p>ไม่พบรายการที่ตรงกับคำค้นหา &ldquo;{searchPrompt}&rdquo;</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {filteredCases.slice(0, 12).map((c) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredCases.slice(0, 10).map((c) => (
               <div
                 key={c.id}
                 onClick={() => onSelectCase(c)}
-                className="bg-white p-4 sm:p-5 rounded-2xl border border-[#E2E8F0] hover:border-[#1E4E8C] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between space-y-3"
+                className="bg-white p-5 rounded-2xl border border-slate-200/90 hover:border-[#173B6B] hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between space-y-3 relative overflow-hidden"
               >
                 <div>
                   {/* Top Meta Row */}
@@ -297,7 +352,7 @@ export default function SmartHubView({
                       <span className="font-bold text-xs text-[#173B6B] group-hover:underline">
                         {c.caseNumber}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#475569] text-[10px] font-medium border border-[#E2E8F0]">
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-semibold border border-slate-200">
                         {c.electionType} · {c.province}
                       </span>
                     </div>
@@ -306,7 +361,7 @@ export default function SmartHubView({
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                         c.slaStatus === "OVERDUE"
-                          ? "bg-red-100 text-red-700 border border-red-200"
+                          ? "bg-rose-100 text-rose-700 border border-rose-200"
                           : c.slaStatus === "NEAR_DUE"
                           ? "bg-amber-100 text-amber-800 border border-amber-200"
                           : c.slaStatus === "COMPLETED"
@@ -322,32 +377,32 @@ export default function SmartHubView({
                   </div>
 
                   {/* Allegation Title */}
-                  <h3 className="text-xs sm:text-sm font-semibold text-[#1A202C] line-clamp-1 mb-1">
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-1 mb-1">
                     {c.allegation}
                   </h3>
 
                   {/* Details */}
-                  <p className="text-xs text-[#64748B] font-light line-clamp-2 leading-relaxed mb-3">
+                  <p className="text-xs text-slate-600 font-light line-clamp-2 leading-relaxed mb-3">
                     {c.details}
                   </p>
 
                   {/* Parties & Officer */}
-                  <div className="text-[11px] text-[#475569] space-y-0.5 pt-2 border-t border-[#F1F5F9]">
+                  <div className="text-[11px] text-slate-600 space-y-0.5 pt-2 border-t border-slate-100">
                     <div className="truncate">
-                      <span className="text-[#94A3B8]">ผู้ร้อง:</span> {c.complainants}
+                      <span className="text-slate-400 font-medium">ผู้ร้อง:</span> {c.complainants}
                     </div>
                     <div className="truncate">
-                      <span className="text-[#94A3B8]">ผู้ถูกร้อง:</span> {c.respondent}
+                      <span className="text-slate-400 font-medium">ผู้ถูกร้อง:</span> {c.respondent}
                     </div>
                   </div>
                 </div>
 
                 {/* Bottom Step Indicator */}
-                <div className="pt-2.5 border-t border-[#F1F5F9] flex items-center justify-between text-xs">
-                  <div className="text-[11px] text-[#1E4E8C] font-medium truncate max-w-[200px]">
+                <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <div className="text-[11px] text-[#1E4E8C] font-semibold truncate max-w-[220px]">
                     📍 {c.currentStage}
                   </div>
-                  <span className="text-[#1E4E8C] font-semibold text-xs flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span className="text-[#173B6B] font-bold text-xs flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                     <span>ดูสำนวน</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </span>
@@ -357,10 +412,10 @@ export default function SmartHubView({
           </div>
         )}
 
-        {filteredCases.length > 12 && (
+        {filteredCases.length > 10 && (
           <div className="text-center pt-2">
-            <span className="text-xs text-[#94A3B8]">
-              แสดง 12 จากทั้งหมด {filteredCases.length} รายการ (พิมพ์ในช่องค้นหาเพื่อเจาะจงสำนวน)
+            <span className="text-xs text-slate-400">
+              แสดง 10 จากทั้งหมด {filteredCases.length} รายการ (ใช้ช่องค้นหาด้านบนเพื่อเจาะจงสำนวน)
             </span>
           </div>
         )}
