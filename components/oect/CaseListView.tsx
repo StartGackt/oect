@@ -171,6 +171,7 @@ export default function CaseListView({
                 <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">จังหวัด</th>
                 <th className="border-b border-slate-200 px-4 py-3.5">ชื่อผู้ร้อง</th>
                 <th className="border-b border-slate-200 px-4 py-3.5">ชื่อผู้ถูกร้อง</th>
+                <th className="border-b border-slate-200 px-4 py-3.5">ข้อกล่าวหา</th>
                 <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">สถานะปัจจุบัน</th>
                 <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">สถานะ Timeline ล่าสุด</th>
                 <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">ระยะเวลาดำเนินงาน Timeline ล่าสุด</th>
@@ -181,7 +182,7 @@ export default function CaseListView({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {paginatedCases.length === 0 ? (
-                <tr><td colSpan={15} className="py-14 text-center text-slate-400">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</td></tr>
+                <tr><td colSpan={16} className="py-14 text-center text-slate-400">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</td></tr>
               ) : paginatedCases.map((caseItem, index) => (
                 <tr key={caseItem.id} onClick={() => onSelectCase(caseItem)} className="cursor-pointer align-top transition hover:bg-blue-50/40">
                   <td className="px-3 py-4 text-slate-400">{pageStart + index + 1}</td>
@@ -193,6 +194,7 @@ export default function CaseListView({
                   <td className="whitespace-nowrap px-4 py-4 text-slate-700">{caseItem.province}</td>
                   <td className="max-w-44 px-4 py-4"><div className="line-clamp-2 leading-5 text-slate-700">{caseItem.complainants}</div></td>
                   <td className="max-w-44 px-4 py-4"><div className="line-clamp-2 leading-5 text-slate-700">{caseItem.respondent}</div></td>
+                  <td className="max-w-64 px-4 py-4"><div className="line-clamp-2 leading-5 text-slate-700">{caseItem.allegation}</div></td>
                   <td className="whitespace-nowrap px-4 py-4"><StatusBadge caseItem={caseItem} /></td>
                   <td className="max-w-56 px-4 py-4 text-slate-700">{caseItem.currentStage}</td>
                   <td className="whitespace-nowrap px-4 py-4 text-slate-500">{getWorkflowStep(caseItem.stageId).slaLabel}</td>
