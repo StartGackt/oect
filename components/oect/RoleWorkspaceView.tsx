@@ -13,6 +13,7 @@ import {
   FileCheck2,
   FileText,
   Gavel,
+  MapPin,
   PlusCircle,
   Scale,
   SearchCheck,
@@ -23,10 +24,14 @@ import {
 } from "lucide-react";
 import { WORKFLOW_STEPS as DOMAIN_WORKFLOW_STEPS, getSlaLabel, type ComplaintItem } from "@/components/oect/complaintDomain";
 
+import { getScopedCases, type SystemRoleId } from "@/components/oect/rbacDomain";
+
 interface RoleWorkspaceViewProps {
   cases: ComplaintItem[];
   roleId: string;
+  userProvince?: string;
   onSelectCase: (caseItem: ComplaintItem) => void;
+  onUpdateCase?: (updated: ComplaintItem) => void;
 }
 
 export const OFFICER_ROLES = [
@@ -67,18 +72,25 @@ const CHECKLIST = [
   "ยื่นภายในระยะเวลาที่กฎหมายกำหนด",
 ];
 
-export default function RoleWorkspaceView({ cases, roleId, onSelectCase }: RoleWorkspaceViewProps) {
+export default function RoleWorkspaceView({ cases, roleId, userProvince = "เชียงใหม่", onSelectCase, onUpdateCase }: RoleWorkspaceViewProps) {
   const [selectedCaseId, setSelectedCaseId] = useState<number | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [checkedItems, setCheckedItems] = useState<number[]>([0, 1, 2, 4]);
+  const [selectedProvinceFilter, setSelectedProvinceFilter] = useState<string>(userProvince);
 
   const role = roleId === "admin" ? ADMIN_ROLE : OFFICER_ROLES.find((item) => item.id === roleId) ?? OFFICER_ROLES[0];
+  
+  // Apply RBAC Data Scope
+  const scopedCases = useMemo(() => {
+    return getScopedCases(selectedProvinceFilter, roleId as SystemRoleId, cases);
+  }, [selectedProvinceFilter, roleId, cases]);
+
   const roleCases = useMemo(
     () =>
-      [...cases]
+      [...scopedCases]
         .filter((item) => item.slaStatus !== "COMPLETED" && (ROLE_STAGE_IDS[roleId] ?? []).includes(item.stageId))
         .sort((a, b) => a.remainingDays - b.remainingDays),
-    [cases, roleId],
+    [scopedCases, roleId],
   );
   const queueCases = roleCases.slice(0, 5);
   const nearDueCount = roleCases.filter((item) => item.slaStatus === "NEAR_DUE").length;
@@ -86,7 +98,14 @@ export default function RoleWorkspaceView({ cases, roleId, onSelectCase }: RoleW
   const activeCase = queueCases.find((item) => item.id === selectedCaseId) ?? queueCases[0];
   const activeStage = Math.min(Math.max(activeCase?.stageId ?? 1, 1), WORKFLOW_STEPS.length);
 
-  const submitAction = (message: string) => {
+  const submitAction = (message: string, targetStageId?: number) => {
+    if (activeCase && targetStageId && onUpdateCase) {
+      const updated: ComplaintItem = {
+        ...activeCase,
+        stageId: targetStageId,
+      };
+      onUpdateCase(updated);
+    }
     setActionMessage(message);
     window.setTimeout(() => setActionMessage(null), 2600);
   };
@@ -110,9 +129,14 @@ export default function RoleWorkspaceView({ cases, roleId, onSelectCase }: RoleW
               <h2 className="mt-2 text-xl font-bold text-slate-950">{role.label}</h2>
               <p className="mt-1 text-xs leading-5 text-slate-500">{role.scope} · ระบบจะแสดงเฉพาะคิวงานและคำสั่งที่บทบาทนี้มีสิทธิ์ดำเนินการ</p>
             </div>
-            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-blue-800 ring-1 ring-blue-200">
-              <UserCheck className="h-3.5 w-3.5" /> ขั้นรับผิดชอบ: {role.stage}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-semibold text-slate-700">
+                <MapPin className="h-3.5 w-3.5 text-blue-700" /> ขอบเขต: {selectedProvinceFilter} {["intake", "review-1", "review-2", "director", "investigation"].includes(roleId) ? "(เฉพาะพื้นที่ จว.)" : "(ทั่วประเทศ)"}
+              </span>
+              <span className="inline-flex w-fit items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-[11px] font-bold text-blue-800 ring-1 ring-blue-200">
+                <UserCheck className="h-3.5 w-3.5" /> ขั้นรับผิดชอบ: {role.stage}
+              </span>
+            </div>
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -186,7 +210,7 @@ export default function RoleWorkspaceView({ cases, roleId, onSelectCase }: RoleW
                   <p className="mt-1 text-xs text-slate-500">ผู้ร้อง {activeCase.complainants} · ผู้ถูกร้อง {activeCase.respondent}</p>
                 </div>
                 <button type="button" onClick={() => onSelectCase(activeCase)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50">
-                  เปิดรายละเอียดและ Audit trail <ChevronRight className="h-4 w-4" />
+                  เปิดรายละเอียดและบันทึกคำสั่ง <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
 
@@ -252,7 +276,7 @@ function RoleTaskPanel({
   roleId: string;
   checkedItems: number[];
   onToggleCheck: (index: number) => void;
-  onSubmit: (message: string) => void;
+  onSubmit: (message: string, targetStageId?: number) => void;
   adminStats: { workflowSteps: number; openCases: number; officers: number };
 }) {
   if (roleId === "review-1" || roleId === "intake") {
@@ -268,8 +292,8 @@ function RoleTaskPanel({
         </div>
         <textarea rows={3} placeholder="บันทึกความเห็นของเจ้าหน้าที่..." className="mt-4 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs outline-none focus:border-blue-500 focus:bg-white" />
         <ActionBar>
-          <button type="button" onClick={() => onSubmit("ส่งรายการที่ไม่ครบถ้วนให้ผู้ร้องแก้ไข พร้อมเริ่มนับถอยหลังแล้ว")} className="btn-secondary text-amber-800"><AlertTriangle className="h-4 w-4" /> ไม่ครบถ้วน — แจ้งแก้ไข</button>
-          <button type="button" onClick={() => onSubmit("ตรวจครบถ้วนและส่งต่อไปยังชั้นตรวจรายละเอียดแล้ว")} className="btn-primary"><CheckCircle2 className="h-4 w-4" /> ครบถ้วน — เสนอสั่งรับ</button>
+          <button type="button" onClick={() => onSubmit("ส่งรายการที่ไม่ครบถ้วนให้ผู้ร้องแก้ไข พร้อมเริ่มนับถอยหลัง 7 วัน")} className="btn-secondary text-amber-800"><AlertTriangle className="h-4 w-4" /> ไม่ครบถ้วน — แจ้งแก้ไข (ข้อ 26(2))</button>
+          <button type="button" onClick={() => onSubmit("ตรวจครบถ้วนและส่งต่อไปยัง ผอ.สนง.กกต.จว. แล้ว", 2)} className="btn-primary"><CheckCircle2 className="h-4 w-4" /> ครบถ้วน — เสนอสั่งรับ</button>
         </ActionBar>
       </TaskShell>
     );
@@ -286,25 +310,80 @@ function RoleTaskPanel({
         <textarea rows={4} placeholder="สรุปผลตรวจสอบหรือระบุแหล่งข้อมูลที่ต้องตรวจเพิ่มเติม..." className="mt-4 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs outline-none focus:border-blue-500 focus:bg-white" />
         <ActionBar>
           <button type="button" onClick={() => onSubmit("สร้างงานตรวจสอบข้อเท็จจริงเพิ่มเติมและแจ้งผู้รับผิดชอบแล้ว")} className="btn-secondary"><PlusCircle className="h-4 w-4" /> ตรวจข้อเท็จจริงเพิ่ม</button>
-          <button type="button" onClick={() => onSubmit("ส่งสรุปผลตรวจให้ ลธ./ผอ. พิจารณาแล้ว")} className="btn-primary"><Send className="h-4 w-4" /> ส่งต่อ ลธ./ผอ.</button>
+          <button type="button" onClick={() => onSubmit("ส่งสรุปผลตรวจให้ ลธ./ผอ. พิจารณาแล้ว", 2)} className="btn-primary"><Send className="h-4 w-4" /> ส่งต่อ ลธ./ผอ.</button>
         </ActionBar>
       </TaskShell>
     );
   }
 
-  if (roleId === "director" || roleId === "commission") {
+  if (roleId === "director") {
     return (
-      <TaskShell icon={Gavel} title={roleId === "director" ? "พิจารณาสั่งรับหรือไม่รับคำร้อง" : "กกต. พิจารณาและวินิจฉัย"} subtitle="แสดงสรุปจากทุกลำดับชั้นโดยไม่ต้องเปิดเอกสารหลายชุด">
+      <TaskShell icon={Gavel} title="พิจารณาสั่งรับคำร้องและแต่งตั้งคณะกรรมการสืบสวน (สส. 4/1)" subtitle="อำนาจ ผอ.สนง.กกต.จว. ตามระเบียบ กกต. ข้อ ๒๘ และ ๓๒">
         <div className="grid gap-3 md:grid-cols-3">
-          <SummaryCard label="ผลตรวจชั้น 1" value="ครบองค์ประกอบ" tone="green" />
-          <SummaryCard label="ผลตรวจชั้น 2" value="มีมูลเพียงพอ" tone="blue" />
-          <SummaryCard label="ความเห็นกฎหมาย" value="เสนอรับคำร้อง" tone="amber" />
+          <SummaryCard label="ผลตรวจชั้น 1" value="ครบองค์ประกอบตามข้อ 22" tone="green" />
+          <SummaryCard label="ผลตรวจชั้น 2" value="มีมูลเพียงพอตามข้อ 28" tone="blue" />
+          <SummaryCard label="ความเห็นกฎหมาย" value="เสนอสั่งรับคำร้อง" tone="amber" />
         </div>
-        <textarea rows={4} placeholder="ระบุเหตุผลและข้อสั่งการ (บังคับ)..." className="mt-4 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs outline-none focus:border-blue-500 focus:bg-white" />
+
+        {/* Investigator Appointment Panel */}
+        <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/60 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
+              <Users className="h-4 w-4 text-blue-700" />
+              แต่งตั้งคณะกรรมการสืบสวนและไต่สวน (แบบ สส. ๔/๑)
+            </span>
+            <span className="text-[10px] text-blue-700 font-semibold bg-white px-2 py-0.5 rounded-full border border-blue-200">
+              กรอบเวลาปกติ 20 วัน
+            </span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3 text-xs">
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-600 mb-1">ประธานกรรมการ *</label>
+              <select className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs">
+                <option>นายวรากร กรณีศึกษา011 (ชำนาญการพิเศษ)</option>
+                <option>นางสุภาวดี วงศ์คำ (ชำนาญการพิเศษ)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-600 mb-1">กรรมการ *</label>
+              <select className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs">
+                <option>นายนรินทร์ เชิดชู (ปฏิบัติการ)</option>
+                <option>นายสมศักดิ์ มุ่งมั่น (ชำนาญการ)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-600 mb-1">กรรมการและเลขานุการ *</label>
+              <select className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs">
+                <option>น.ส.กมลชนก พรหมมา (ปฏิบัติการ)</option>
+                <option>นายธนดล เจริญทรัพย์ (ปฏิบัติการ)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <textarea rows={3} placeholder="ระบุเหตุผลและข้อสั่งการของ ผอ.สนง.กกต.จว. (ตามระเบียบฯ)..." className="mt-4 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs outline-none focus:border-blue-500 focus:bg-white" />
         <ActionBar>
-          <button type="button" onClick={() => onSubmit("บันทึกคำสั่งไม่รับ/ยกคำร้องและสร้างหนังสือแจ้งผลแล้ว")} className="btn-secondary text-rose-700"><FileCheck2 className="h-4 w-4" /> ไม่รับ / ยกคำร้อง</button>
-          <button type="button" onClick={() => onSubmit("ส่งกลับเพื่อตรวจสอบข้อเท็จจริงเพิ่มเติมแล้ว")} className="btn-secondary"><SearchCheck className="h-4 w-4" /> ตรวจเพิ่มเติม</button>
-          <button type="button" onClick={() => onSubmit("บันทึกคำสั่งรับและส่งต่อไปยังคณะสืบสวนฯ แล้ว")} className="btn-primary"><Gavel className="h-4 w-4" /> สั่งรับคำร้อง</button>
+          <button type="button" onClick={() => onSubmit("บันทึกคำสั่งไม่รับ/ยกคำร้องและรายงานส่วนกลางแล้ว", 4)} className="btn-secondary text-rose-700"><FileCheck2 className="h-4 w-4" /> ไม่รับ / ยกคำร้อง</button>
+          <button type="button" onClick={() => onSubmit("ส่งกลับให้พนักงานตรวจข้อเท็จจริงเพิ่มเติมแล้ว", 1)} className="btn-secondary"><SearchCheck className="h-4 w-4" /> ส่งตรวจเพิ่ม</button>
+          <button type="button" onClick={() => onSubmit("สั่งรับคำร้องและออกคำสั่งแต่งตั้ง คกก.สืบสวนฯ (สส. 4/1) สำเร็จ", 3)} className="btn-primary"><Gavel className="h-4 w-4" /> สั่งรับและแต่งตั้ง คกก.สืบสวน</button>
+        </ActionBar>
+      </TaskShell>
+    );
+  }
+
+  if (roleId === "commission") {
+    return (
+      <TaskShell icon={Gavel} title="กกต. พิจารณาและมีมติวินิจฉัยชี้ขาด" subtitle="ตามรัฐธรรมนูญและระเบียบ กกต. ข้อ ๗๖-๘๓">
+        <div className="grid gap-3 md:grid-cols-3">
+          <SummaryCard label="ความเห็น คกก.สืบสวนฯ" value="มีมูลการกระทำผิด" tone="green" />
+          <SummaryCard label="ความเห็น 4 ลำดับชั้น" value="เห็นพ้องกับ สนง." tone="blue" />
+          <SummaryCard label="มติคณะอนุวินิจฉัย" value="เสนอสั่งเลือกตั้งใหม่" tone="amber" />
+        </div>
+        <textarea rows={4} placeholder="ระบุเหตุผลและมติที่ประชุม กกต. (มติเอกฉันท์ / มติเสียงข้างมาก)..." className="mt-4 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs outline-none focus:border-blue-500 focus:bg-white" />
+        <ActionBar>
+          <button type="button" onClick={() => onSubmit("มติ กกต. วินิจฉัยยกคำร้อง", 9)} className="btn-secondary text-slate-700"><FileCheck2 className="h-4 w-4" /> ยกคำร้อง</button>
+          <button type="button" onClick={() => onSubmit("มติ กกต. สั่งให้สืบสวนและไต่สวนเพิ่มเติม", 3)} className="btn-secondary text-amber-800"><SearchCheck className="h-4 w-4" /> ไต่สวนเพิ่ม</button>
+          <button type="button" onClick={() => onSubmit("มติ กกต. วินิจฉัยสั่งให้เลือกตั้งใหม่ / เพิกถอนสิทธิ", 9)} className="btn-primary"><Gavel className="h-4 w-4" /> บันทึกมติ กกต.</button>
         </ActionBar>
       </TaskShell>
     );

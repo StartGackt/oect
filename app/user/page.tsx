@@ -38,6 +38,7 @@ import SlaMonitoringView from "@/components/oect/SlaMonitoringView";
 import WorkflowVisualizer from "@/components/oect/WorkflowVisualizer";
 import { CURRENT_CITIZEN, type ComplaintItem } from "@/components/oect/complaintDomain";
 import { useComplaintsStore } from "@/components/oect/useComplaintsStore";
+import { type SystemRoleId } from "@/components/oect/rbacDomain";
 
 type PortalView = "dashboard" | "workspace" | "cases" | "workflow" | "sla" | "citizen" | "governance" | "integrations";
 
@@ -269,6 +270,15 @@ export default function UserPortalPage() {
     setSelectedCaseReadOnly(readOnly);
   };
 
+  const handleUpdateCase = (updatedCase: ComplaintItem) => {
+    setCases((currentCases) =>
+      currentCases.map((c) => (c.id === updatedCase.id ? updatedCase : c))
+    );
+    if (selectedCase && selectedCase.id === updatedCase.id) {
+      setSelectedCase(updatedCase);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
       <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-white/95 backdrop-blur-xl">
@@ -318,6 +328,15 @@ export default function UserPortalPage() {
           </div>}
 
           <div className="flex items-center gap-2">
+            <Link
+              href="/admin"
+              className="hidden md:inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200 transition"
+              title="เข้าสู่หน้าผู้ดูแลระบบเพื่อจัดการผู้ใช้ สิทธิ์ SLA และมาสเตอร์ดาต้า"
+            >
+              <ShieldCheck className="h-3.5 w-3.5 text-blue-700" />
+              <span>Admin Console</span>
+            </Link>
+
             <button
               type="button"
               className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"
@@ -499,7 +518,13 @@ export default function UserPortalPage() {
           )}
 
           {activeView === "workspace" && (
-            <RoleWorkspaceView cases={cases} roleId={selectedRoleId} onSelectCase={(caseItem) => openCase(caseItem)} />
+            <RoleWorkspaceView
+              cases={cases}
+              roleId={selectedRoleId}
+              userProvince="เชียงใหม่"
+              onSelectCase={(caseItem) => openCase(caseItem)}
+              onUpdateCase={handleUpdateCase}
+            />
           )}
 
           {activeView === "cases" && (
@@ -532,6 +557,7 @@ export default function UserPortalPage() {
               onTabChange={selectCitizenTab}
               onOpenNewComplaint={() => selectCitizenTab("new")}
               onSelectCase={(caseItem) => openCase(caseItem, true)}
+              onUpdateCase={handleUpdateCase}
             />
           ))}
 
@@ -582,7 +608,16 @@ export default function UserPortalPage() {
         </main>
       </div>
 
-      {selectedCase && <CaseDetailModal caseItem={selectedCase} readOnly={selectedCaseReadOnly} onClose={() => setSelectedCase(null)} />}
+      {selectedCase && (
+        <CaseDetailModal
+          caseItem={selectedCase}
+          readOnly={selectedCaseReadOnly}
+          currentUserRole={isCitizenPortal ? "citizen" : (selectedRoleId as SystemRoleId)}
+          currentUserName={isCitizenPortal ? CURRENT_CITIZEN.name : selectedRole.label}
+          onClose={() => setSelectedCase(null)}
+          onUpdateCase={handleUpdateCase}
+        />
+      )}
       {isNewModalOpen && !isCitizenPortal && (
         <NewComplaintForm
           mode="officer"

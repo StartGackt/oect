@@ -11,21 +11,295 @@ import {
   Printer, 
   Eye, 
   EyeOff, 
-  Paperclip
+  Paperclip,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  ArrowRight,
+  Gavel,
+  BadgeCheck,
+  FileCheck2,
+  Users
 } from "lucide-react";
 import { WORKFLOW_STEPS, formatThaiDate, getSlaLabel, type ComplaintItem } from "@/components/oect/complaintDomain";
+import { useAuditLogStore, type SystemRoleId, type AuditActionType } from "@/components/oect/rbacDomain";
 
 interface CaseDetailModalProps {
   caseItem: ComplaintItem;
   onClose: () => void;
   readOnly?: boolean;
   presentation?: "modal" | "page";
+  currentUserRole?: SystemRoleId;
+  currentUserName?: string;
+  onUpdateCase?: (updated: ComplaintItem) => void;
 }
 
-export default function CaseDetailModal({ caseItem, onClose, readOnly = false, presentation = "page" }: CaseDetailModalProps) {
+interface ActionOption {
+  value: string;
+  label: string;
+  targetStageId: number;
+  auditAction: AuditActionType;
+  actionKind: "advance" | "correction" | "extension" | "ruling" | "complete" | "reinvestigate";
+  desc: string;
+}
+
+function getAvailableActions(roleId: SystemRoleId, currentStageId: number): ActionOption[] {
+  // If admin, return all
+  if (roleId === "admin") {
+    return [
+      {
+        value: "admin_advance",
+        label: "เลื่อนสถานะไปยังขั้นตอนถัดไป",
+        targetStageId: Math.min(currentStageId + 1, 10),
+        auditAction: "CASE_DIRECTOR_ORDER",
+        actionKind: "advance",
+        desc: "ผู้ดูแลระบบสั่งเลื่อนขั้นตอนตามอำนาจหน้าที่",
+      },
+      {
+        value: "admin_correction",
+        label: "แจ้งผู้ร้องแก้ไขเพิ่มเติมตามข้อ 26(2) (ภายใน 7 วัน)",
+        targetStageId: currentStageId,
+        auditAction: "CASE_CORRECTION_REQUESTED",
+        actionKind: "correction",
+        desc: "แจ้งให้ผู้ร้องส่งเอกสารหรือข้อเท็จจริงเพิ่มเติม",
+      },
+      {
+        value: "admin_extension",
+        label: "อนุมัติขยายระยะเวลาสืบสวน 15 วัน (ข้อ 41 ว.3)",
+        targetStageId: currentStageId,
+        auditAction: "CASE_EXTENSION_REQUESTED",
+        actionKind: "extension",
+        desc: "ขยายเวลาสืบสวนให้ คกก.สืบสวนฯ เพิ่มเติม 15 วัน",
+      },
+      {
+        value: "admin_ruling",
+        label: "บันทึกมติ กกต. วินิจฉัยชี้ขาด",
+        targetStageId: 9,
+        auditAction: "CASE_COMMISSION_RULING",
+        actionKind: "ruling",
+        desc: "วินิจฉัยชี้ขาดสำนวนคำร้องคัดค้าน",
+      },
+      {
+        value: "admin_close",
+        label: "แจ้งผลคำวินิจฉัยและปิดสำนวนเรื่อง",
+        targetStageId: 10,
+        auditAction: "CASE_NOTIFY_RESULT",
+        actionKind: "complete",
+        desc: "ปิดเรื่องเสร็จสมบูรณ์",
+      },
+    ];
+  }
+
+  // Intake & Reviewers (Stage 1)
+  if (roleId === "intake" || roleId === "review-1" || roleId === "review-2") {
+    return [
+      {
+        value: "intake_verified",
+        label: "ตรวจความครบถ้วนแล้ว — เสนอ ผอ.สนง.กกต.จว. พิจารณาสั่งรับคำร้อง",
+        targetStageId: 2,
+        auditAction: "CASE_INTAKE",
+        actionKind: "advance",
+        desc: "ตรวจสอบชื่อ ที่อยู่ ผู้ถูกร้อง และข้อกล่าวหาครบถ้วนตามข้อ 22",
+      },
+      {
+        value: "intake_request_correction",
+        label: "แจ้งผู้ร้องแก้ไขเพิ่มเติมตามข้อ 26(2) (ภายใน 7 วันทำการ)",
+        targetStageId: 1,
+        auditAction: "CASE_CORRECTION_REQUESTED",
+        actionKind: "correction",
+        desc: "ส่งการแจ้งเตือนไปยัง Citizen Portal ให้ผู้ร้องส่งหลักฐานเพิ่มเติม",
+      },
+    ];
+  }
+
+  // Provincial Director (Stage 2, 4)
+  if (roleId === "director") {
+    return [
+      {
+        value: "dir_order_accept",
+        label: "สั่งรับคำร้องและแต่งตั้งคณะกรรมการสืบสวนและไต่สวน (แบบ สส. 4/1)",
+        targetStageId: 3,
+        auditAction: "CASE_DIRECTOR_ORDER",
+        actionKind: "advance",
+        desc: "คำร้องมีมูลเพียงพอ มอบหมาย คกก.สืบสวนฯ ดำเนินการ",
+      },
+      {
+        value: "dir_order_reject",
+        label: "สั่งไม่รับคำร้อง / ยกคำร้อง (เสนอ กกต. ส่วนกลาง)",
+        targetStageId: 4,
+        auditAction: "CASE_DIRECTOR_ORDER",
+        actionKind: "advance",
+        desc: "คำร้องขาดองค์ประกอบตามข้อ 22 หรือไม่มีมูลตามข้อ 28",
+      },
+      {
+        value: "dir_approve_extension",
+        label: "อนุมัติขยายระยะเวลาสืบสวนและไต่สวน 15 วัน (ตามข้อ 41 ว.3)",
+        targetStageId: 3,
+        auditAction: "CASE_EXTENSION_REQUESTED",
+        actionKind: "extension",
+        desc: "อนุมัติตามคำขอของคณะกรรมการสืบสวนฯ",
+      },
+      {
+        value: "dir_submit_central",
+        label: "ลงนามสำนวนและจัดส่งให้ สนง.กกต. ส่วนกลาง (e-Saraban)",
+        targetStageId: 5,
+        auditAction: "CASE_DIRECTOR_ORDER",
+        actionKind: "advance",
+        desc: "ส่งสำนวนการสืบสวนพร้อมความเห็นเข้าสู่ส่วนกลาง",
+      },
+    ];
+  }
+
+  // Investigation Committee (Stage 3)
+  if (roleId === "investigation") {
+    return [
+      {
+        value: "inv_submit_report",
+        label: "สรุปสำนวนและทำรายงานการสืบสวนเสนอ ผอ.สนง.กกต.จว.",
+        targetStageId: 4,
+        auditAction: "CASE_INVESTIGATION_SUBMIT",
+        actionKind: "advance",
+        desc: "สืบสวนพยาน รวบรวมหลักฐาน และแจ้งข้อกล่าวหาเสร็จสิ้น",
+      },
+      {
+        value: "inv_request_ext",
+        label: "ขออนุมัติขยายระยะเวลาสืบสวน 15 วัน (ตามข้อ 41 ว.3)",
+        targetStageId: 3,
+        auditAction: "CASE_EXTENSION_REQUESTED",
+        actionKind: "extension",
+        desc: "เนื่องจากมีพยานบุคคลหรือเอกสารสำคัญที่ต้องรวบรวมเพิ่มเติม",
+      },
+    ];
+  }
+
+  // Central Sequential Reviewer (Stage 5, 6)
+  if (roleId === "sequential") {
+    return [
+      {
+        value: "seq_advance_secretary",
+        label: "ตรวจสำนวนชั้น 4 ลำดับแล้ว — เสนอความเห็นต่อ เลขาธิการ กกต.",
+        targetStageId: 6,
+        auditAction: "CASE_CENTRAL_REVIEW",
+        actionKind: "advance",
+        desc: "ผอ.ฝ่าย → รอง ผอ.สำนัก → ผอ.สำนัก ตรวจสอบความถูกต้องครบถ้วน",
+      },
+      {
+        value: "seq_advance_subcom",
+        label: "เลขาธิการ กกต. มีความเห็นเสนอต่อ คณะอนุกรรมการวินิจฉัย",
+        targetStageId: 7,
+        auditAction: "CASE_CENTRAL_REVIEW",
+        actionKind: "advance",
+        desc: "ส่งต่อสำนวนเข้าสู่วาระการประชุมของคณะอนุวินิจฉัย",
+      },
+    ];
+  }
+
+  // Subcommittee Secretary (Stage 7)
+  if (roleId === "subcommittee") {
+    return [
+      {
+        value: "subcom_meeting_opinion",
+        label: "บันทึกความเห็นคณะอนุกรรมการวินิจฉัยเสนอ กกต.",
+        targetStageId: 8,
+        auditAction: "CASE_SUBCOMMITTEE_MEET",
+        actionKind: "advance",
+        desc: "คณะอนุวินิจฉัยประชุมพิจารณาและมีมติเสนอ กกต. วินิจฉัยชี้ขาด",
+      },
+    ];
+  }
+
+  // Election Commission (Stage 8)
+  if (roleId === "commission") {
+    return [
+      {
+        value: "comm_rule_dismiss",
+        label: "มติ กกต. วินิจฉัยยกคำร้อง (พยานหลักฐานไม่เพียงพอ)",
+        targetStageId: 9,
+        auditAction: "CASE_COMMISSION_RULING",
+        actionKind: "ruling",
+        desc: "กกต. มีมติยกคำร้อง ส่งต่อสำนักวินิจฉัยจัดทำคำวินิจฉัย",
+      },
+      {
+        value: "comm_rule_reelection",
+        label: "มติ กกต. วินิจฉัยสั่งให้มีการเลือกตั้งใหม่ (ใบเหลือง)",
+        targetStageId: 9,
+        auditAction: "CASE_COMMISSION_RULING",
+        actionKind: "ruling",
+        desc: "กกต. มีมติสั่งให้จัดการเลือกตั้งใหม่ในเขตเลือกตั้ง",
+      },
+      {
+        value: "comm_rule_revoke",
+        label: "มติ กกต. วินิจฉัยสั่งเพิกถอนสิทธิเลือกตั้ง/สมัคร (ใบแดง/ส้ม)",
+        targetStageId: 9,
+        auditAction: "CASE_COMMISSION_RULING",
+        actionKind: "ruling",
+        desc: "กกต. มีมติส่งศาลฎีกาเพิกถอนสิทธิ",
+      },
+      {
+        value: "comm_reinvestigate",
+        label: "มติ กกต. สั่งให้สืบสวนและไต่สวนเพิ่มเติม",
+        targetStageId: 3,
+        auditAction: "CASE_COMMISSION_RULING",
+        actionKind: "reinvestigate",
+        desc: "ส่งสำนวนกลับให้ สนง.กกต.จว. ดำเนินการสืบสวนเพิ่มเติม",
+      },
+    ];
+  }
+
+  // Secretary & Decree Office (Stage 9, 10)
+  if (roleId === "secretary") {
+    return [
+      {
+        value: "sec_prepare_decree",
+        label: "จัดทำและตรวจร่างคำวินิจฉัย กกต. ฉบับสมบูรณ์ (ข้อ 84)",
+        targetStageId: 10,
+        auditAction: "CASE_DECREE_PREPARED",
+        actionKind: "advance",
+        desc: "ตรวจทานและลงนามคำวินิจฉัย กกต. ตามระเบียบข้อ 84",
+      },
+      {
+        value: "sec_notify_close",
+        label: "แจ้งคำวินิจฉัยให้ ผอ.สนง.กกต.จว. และคู่กรณีทราบ พร้อมปิดเรื่อง (ข้อ 85)",
+        targetStageId: 10,
+        auditAction: "CASE_NOTIFY_RESULT",
+        actionKind: "complete",
+        desc: "แจ้งมติให้จังหวัดและประชาชนทราบอย่างเป็นทางการ",
+      },
+    ];
+  }
+
+  // Default fallback
+  return [
+    {
+      value: "default_advance",
+      label: "ส่งต่อสำนวนไปยังขั้นตอนถัดไป",
+      targetStageId: Math.min(currentStageId + 1, 10),
+      auditAction: "CASE_VIEW",
+      actionKind: "advance",
+      desc: "ส่งต่อตามสายงานปกติ",
+    },
+  ];
+}
+
+export default function CaseDetailModal({
+  caseItem,
+  onClose,
+  readOnly = false,
+  presentation = "page",
+  currentUserRole = "admin",
+  currentUserName = "เจ้าหน้าที่ผู้ปฏิบัติงาน",
+  onUpdateCase,
+}: CaseDetailModalProps) {
+  const [, appendAuditLog] = useAuditLogStore();
   const [maskData, setMaskData] = useState<boolean>(true);
   const [officerNote, setOfficerNote] = useState<string>("");
   const [activeSubTab, setActiveSubTab] = useState<"info" | "timeline" | "action">("info");
+  const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
+
+  const availableActions = getAvailableActions(currentUserRole, caseItem.stageId);
+  const [selectedActionValue, setSelectedActionValue] = useState<string>(
+    availableActions[0]?.value || ""
+  );
 
   // Masking helper
   const maskName = (text: string) => {
@@ -33,13 +307,71 @@ export default function CaseDetailModal({ caseItem, onClose, readOnly = false, p
     return text.replace(/(\S{3})\S+(\S{2})/g, "$1***$2");
   };
 
-  const workflowSteps = WORKFLOW_STEPS.map((step) => ({ id: step.id, title: `${step.id}. ${step.title}`, dept: step.section, sla: step.slaLabel }));
+  const workflowSteps = WORKFLOW_STEPS.map((step) => ({
+    id: step.id,
+    title: `${step.id}. ${step.title}`,
+    dept: step.section,
+    sla: step.slaLabel,
+  }));
+
+  const selectedAction = availableActions.find((a) => a.value === selectedActionValue) || availableActions[0];
 
   const handleSaveAction = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedAction) return;
+
+    // Create updated CaseItem
+    const updatedCase: ComplaintItem = {
+      ...caseItem,
+      stageId: selectedAction.targetStageId,
+      currentStage: WORKFLOW_STEPS.find((s) => s.id === selectedAction.targetStageId)?.title || caseItem.currentStage,
+      currentSection: WORKFLOW_STEPS.find((s) => s.id === selectedAction.targetStageId)?.section || caseItem.currentSection,
+      officialDecision: selectedAction.label,
+      decisionNote: officerNote,
+      decidedBy: currentUserName,
+      decidedDate: new Date().toISOString().split("T")[0],
+    };
+
+    // Specific Action mutations
+    if (selectedAction.actionKind === "correction") {
+      updatedCase.correctionRequested = true;
+      updatedCase.correctionNote = officerNote;
+      updatedCase.correctionDeadline = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+    } else if (selectedAction.actionKind === "extension") {
+      updatedCase.extensionRequested = true;
+      updatedCase.extensionDays = 15;
+      updatedCase.extensionReason = officerNote;
+      updatedCase.extensionApproved = true;
+      updatedCase.remainingDays = Math.max(caseItem.remainingDays, 0) + 15;
+    } else if (selectedAction.actionKind === "complete") {
+      updatedCase.slaStatus = "COMPLETED";
+      updatedCase.remainingDays = 0;
+    }
+
+    // Append Audit Log
+    appendAuditLog({
+      userId: currentUserRole === "admin" ? "usr-admin" : "usr-officer",
+      userName: currentUserName,
+      userRole: currentUserRole,
+      userRoleLabel: currentUserRole.toUpperCase(),
+      action: selectedAction.auditAction,
+      actionLabel: selectedAction.label,
+      caseNumber: caseItem.caseNumber,
+      province: caseItem.province,
+      ipAddress: "192.168.10.25",
+      status: "SUCCESS",
+      details: `${selectedAction.label}: ${officerNote || "ไม่มีหมายเหตุเพิ่มเติม"} (โดย ${currentUserName})`,
+    });
+
+    if (onUpdateCase) {
+      onUpdateCase(updatedCase);
+    }
+
+    setActionSuccessMessage(`บันทึกคำสั่ง "${selectedAction.label}" สำเร็จ`);
     window.setTimeout(() => {
-      alert("บันทึกคำสั่งและอัปเดตสถานะสำนวนเรียบร้อยแล้ว");
-    }, 300);
+      setActionSuccessMessage(null);
+      setActiveSubTab("info");
+    }, 1600);
   };
 
   return (
@@ -54,11 +386,11 @@ export default function CaseDetailModal({ caseItem, onClose, readOnly = false, p
                 {caseItem.caseNumber}
               </span>
               <span className="text-xs text-white/80">
-                ประเภท: {caseItem.electionType} · กลุ่ม: {caseItem.missionGroup}
+                ประเภท: {caseItem.electionType} · สังกัด: {caseItem.province} ({caseItem.currentSection})
               </span>
             </div>
             <h2 id="case-detail-title" className="text-base sm:text-lg font-medium text-white">
-              {readOnly ? "รายละเอียดคำร้องและสถานะที่เปิดเผยได้" : "สำนวนอิเล็กทรอนิกส์ (e-Dossier Case File)"}
+              {readOnly ? "รายละเอียดคำร้องและสถานะที่เปิดเผยได้ (Citizen View)" : `สำนวนอิเล็กทรอนิกส์ (e-Dossier) — ปฏิบัติงานในฐานะ: ${currentUserRole}`}
             </h2>
           </div>
 
@@ -84,6 +416,14 @@ export default function CaseDetailModal({ caseItem, onClose, readOnly = false, p
           </div>
         </div>
 
+        {/* Action Success Toast */}
+        {actionSuccessMessage && (
+          <div className="bg-emerald-50 border-b border-emerald-200 px-6 py-3 flex items-center gap-2 text-xs font-bold text-emerald-800 animate-in fade-in">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            {actionSuccessMessage}
+          </div>
+        )}
+
         {/* Navigation Tabs inside modal */}
         <div className="bg-[#F7FAFC] border-b border-[#E2E8F0] px-6 py-2 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -105,11 +445,12 @@ export default function CaseDetailModal({ caseItem, onClose, readOnly = false, p
             </button>
             {!readOnly && <button
               onClick={() => setActiveSubTab("action")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
                 activeSubTab === "action" ? "bg-[#1B3F8B] text-white shadow-2xs" : "text-[#718096] hover:text-[#1A202C]"
               }`}
             >
-              ✍️ บันทึกคำสั่ง / ความเห็น
+              <Gavel className="w-3.5 h-3.5" />
+              <span>บันทึกคำสั่งตามสิทธิ์ ({availableActions.length} คำสั่ง)</span>
             </button>}
           </div>
 
@@ -132,6 +473,25 @@ export default function CaseDetailModal({ caseItem, onClose, readOnly = false, p
         {/* Modal Scrollable Content */}
         <div className={`flex-1 space-y-6 p-6 sm:p-8 ${presentation === "modal" ? "overflow-y-auto" : ""}`}>
           
+          {/* Correction Banner if in correction status */}
+          {caseItem.correctionRequested && (
+            <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+              <div>
+                <strong className="block font-bold">แจ้งผู้ร้องแก้ไขเพิ่มเติมตามข้อ 26(2)</strong>
+                <p className="mt-0.5 text-[11px] leading-relaxed">
+                  หมายเหตุคำสั่ง: {caseItem.correctionNote || "กรุณาแนบหลักฐานเอกสารระบุพฤติการณ์เพิ่มเติม"}
+                  {caseItem.correctionDeadline && ` · ครบกำหนดวันที่ ${formatThaiDate(caseItem.correctionDeadline)}`}
+                </p>
+                {caseItem.correctionSubmitted && (
+                  <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800">
+                    <CheckCircle2 className="h-3 w-3" /> ผู้ร้องส่งเอกสารเพิ่มเติมแล้วเมื่อ {caseItem.correctionSubmittedDate}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* TAB 1: INFO & EVIDENCE */}
           {activeSubTab === "info" && (
             <div className="space-y-6">
@@ -143,7 +503,7 @@ export default function CaseDetailModal({ caseItem, onClose, readOnly = false, p
                   <div className="text-xs font-semibold text-[#1A202C]">{formatThaiDate(caseItem.receivedDate)}</div>
                 </div>
                 <div>
-                  <span className="text-[10px] text-[#718096] uppercase font-medium">วันเลือกตั้ง</span>
+                  <span className="text-[10px] text-[#718096] uppercase font-medium">วันที่เลือกตั้ง</span>
                   <div className="text-xs font-semibold text-[#1A202C]">{formatThaiDate(caseItem.electionDate)}</div>
                 </div>
                 <div>
@@ -158,9 +518,24 @@ export default function CaseDetailModal({ caseItem, onClose, readOnly = false, p
 
               {!readOnly && (
                 <div className="grid gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 sm:grid-cols-[auto_1fr_1fr] sm:items-center">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-sm font-bold text-white">{caseItem.officer.slice(0, 2)}</span>
-                  <div><div className="text-[10px] font-bold uppercase tracking-wide text-blue-500">ผู้รับผิดชอบปัจจุบัน</div><div className="mt-1 text-sm font-bold text-blue-950">{caseItem.officer}</div><div className="mt-1 text-[10px] text-blue-700">พนักงานผู้ได้รับมอบหมาย · {caseItem.currentSection}</div></div>
-                  <div className="grid grid-cols-2 gap-3 text-[10px]"><div><div className="text-blue-500">โทรศัพท์</div><div className="mt-1 font-semibold text-blue-950">053-***-184</div></div><div><div className="text-blue-500">วันที่รับมอบหมาย</div><div className="mt-1 font-semibold text-blue-950">{formatThaiDate(caseItem.receivedDate)}</div></div></div>
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-sm font-bold text-white">
+                    {caseItem.officer.slice(0, 2)}
+                  </span>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wide text-blue-500">ผู้รับผิดชอบปัจจุบัน (Officer Relation)</div>
+                    <div className="mt-1 text-sm font-bold text-blue-950">{caseItem.officer}</div>
+                    <div className="mt-1 text-[10px] text-blue-700">พนักงานผู้ได้รับมอบหมาย · {caseItem.currentSection}</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-[10px]">
+                    <div>
+                      <div className="text-blue-500">โทรศัพท์</div>
+                      <div className="mt-1 font-semibold text-blue-950">053-112-184</div>
+                    </div>
+                    <div>
+                      <div className="text-blue-500">วันที่รับมอบหมาย</div>
+                      <div className="mt-1 font-semibold text-blue-950">{formatThaiDate(caseItem.receivedDate)}</div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -181,9 +556,24 @@ export default function CaseDetailModal({ caseItem, onClose, readOnly = false, p
                   <div className="text-xs text-[#2D3748] font-medium leading-relaxed bg-[#F7FAFC] p-3 rounded-xl border border-[#EDF2F7]">
                     {maskName(caseItem.complainants)}
                   </div>
-                  <div className="text-[10px] text-[#718096]">
-                    ✓ ตรวจสอบสถานะการมีสิทธิเลือกตั้งผ่าน DOPA Linkage Center แล้ว
-                  </div>
+                  
+                  {/* Proxy / Delegation Badge */}
+                  {caseItem.isDelegated ? (
+                    <div className="mt-2 rounded-xl bg-purple-50 p-2.5 border border-purple-200 text-xs text-purple-900">
+                      <div className="flex items-center gap-1 font-bold text-[11px]">
+                        <BadgeCheck className="h-3.5 w-3.5 text-purple-700" />
+                        <span>ยื่นโดยผู้รับมอบอำนาจ (ตามระเบียบ ข้อ ๒๕)</span>
+                      </div>
+                      <div className="mt-1 text-[10px] text-purple-800">
+                        ผู้รับมอบอำนาจ: <strong>{caseItem.proxyName || "นายอนุรักษ์ ผู้รับมอบอำนาจ"}</strong>
+                        {caseItem.proxyRelationship && ` (${caseItem.proxyRelationship})`}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-[#718096]">
+                      ✓ ยื่นด้วยตนเองและตรวจสอบสิทธิผ่าน DOPA Linkage Center แล้ว
+                    </div>
+                  )}
                 </div>
 
                 {/* Respondents */}
@@ -213,12 +603,34 @@ export default function CaseDetailModal({ caseItem, onClose, readOnly = false, p
                   <span className="text-xs font-semibold text-[#1A202C]">
                     ข้อกล่าวหา: <strong className="text-red-600 font-bold">{caseItem.allegation}</strong>
                   </span>
-                  <span className="text-[10px] text-[#718096]">{readOnly ? "ข้อมูลภายในของเจ้าหน้าที่ถูกปกปิด" : `พนักงานผู้รับผิดชอบ: ${caseItem.officer}`}</span>
+                  <span className="text-[10px] text-[#718096]">
+                    {readOnly ? "ข้อมูลความเห็นภายในถูกปกปิด" : `ผู้รับผิดชอบ: ${caseItem.officer}`}
+                  </span>
                 </div>
                 <div className="text-xs text-[#4A5568] leading-relaxed bg-[#F7FAFC] p-4 rounded-xl border border-[#EDF2F7]">
                   {caseItem.details}
                 </div>
               </div>
+
+              {/* Official Decision Display if any */}
+              {caseItem.officialDecision && (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-[#1B3F8B] flex items-center gap-1.5">
+                      <Gavel className="h-4 w-4" />
+                      คำสั่ง / คำวินิจฉัยล่าสุด
+                    </span>
+                    <span className="text-[10px] text-slate-500">{formatThaiDate(caseItem.decidedDate || "")}</span>
+                  </div>
+                  <div className="text-xs font-semibold text-slate-800">{caseItem.officialDecision}</div>
+                  {caseItem.decisionNote && (
+                    <p className="text-[11px] text-slate-600 bg-white p-3 rounded-xl border border-blue-100">
+                      {caseItem.decisionNote}
+                    </p>
+                  )}
+                  <div className="text-[10px] text-slate-400">สั่งการโดย: {caseItem.decidedBy || "-"}</div>
+                </div>
+              )}
 
               {/* Evidence & Attachments */}
               <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-2xs space-y-3">
@@ -230,21 +642,23 @@ export default function CaseDetailModal({ caseItem, onClose, readOnly = false, p
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#F7FAFC] border border-[#EDF2F7] text-xs">
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4 text-blue-600" />
-                      <span className="truncate">คำร้องแบบ_สสว1.pdf</span>
+                      <span className="truncate">คำร้องแบบ_สตว1.pdf</span>
                     </div>
                     <Download className="w-3.5 h-3.5 text-[#718096] hover:text-[#1A202C] cursor-pointer" />
                   </div>
+                  {caseItem.isDelegated && (
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-purple-50 border border-purple-200 text-xs">
+                      <div className="flex items-center gap-2">
+                        <FileCheck2 className="w-4 h-4 text-purple-700" />
+                        <span className="truncate">หนังสือมอบอำนาจ_สตว1_1.pdf</span>
+                      </div>
+                      <Download className="w-3.5 h-3.5 text-purple-700 cursor-pointer" />
+                    </div>
+                  )}
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#F7FAFC] border border-[#EDF2F7] text-xs">
                     <div className="flex items-center gap-2">
                       <FileText className="w-4 h-4 text-emerald-600" />
                       <span className="truncate">ภาพถ่ายหลักฐาน_01.jpg</span>
-                    </div>
-                    <Download className="w-3.5 h-3.5 text-[#718096] hover:text-[#1A202C] cursor-pointer" />
-                  </div>
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#F7FAFC] border border-[#EDF2F7] text-xs">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-amber-600" />
-                      <span className="truncate">บันทึกถ้อยคำพยาน.pdf</span>
                     </div>
                     <Download className="w-3.5 h-3.5 text-[#718096] hover:text-[#1A202C] cursor-pointer" />
                   </div>
@@ -316,32 +730,41 @@ export default function CaseDetailModal({ caseItem, onClose, readOnly = false, p
           {/* TAB 3: OFFICIAL ACTION FORM */}
           {activeSubTab === "action" && (
             <form onSubmit={handleSaveAction} className="space-y-4">
-              <div className="bg-[#FFD600]/10 p-4 rounded-2xl border border-[#E2E8F0]">
-                <span className="text-xs font-semibold text-[#1A202C] block mb-1">
-                  การสั่งการและบันทึกความเห็นทางกฎหมาย (Official Ruling / Action)
+              <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4">
+                <span className="text-xs font-bold text-[#1B3F8B] block mb-1">
+                  การสั่งการและบันทึกความเห็นทางกฎหมาย (Official Action & Ruling)
                 </span>
-                <p className="text-[11px] text-[#718096]">
-                  สำหรับ ผอ.กกต.จว. หรือ คณะกรรมการสืบสวนและไต่สวน หรือ กกต. ส่วนกลาง
+                <p className="text-[11px] text-slate-600">
+                  ระบบกรองคำสั่งเฉพาะที่บทบาท <strong>{currentUserRole}</strong> มีสิทธิ์สั่งการตามขั้นตอนปัจจุบัน
+                  และจะบันทึกลงใน Audit Trail Logs โดยอัตโนมัติ
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#2D3748] mb-1.5">
-                  เลือกประเภทคำสั่งการ / การเปลี่ยนสถานะ
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  เลือกประเภทคำสั่งการ / การเปลี่ยนสถานะ *
                 </label>
-                <select className="w-full text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#1B3F8B]">
-                  <option>สั่งรับคำร้อง (เสนอตั้ง คกก.สืบสวนและไต่สวน)</option>
-                  <option>สั่งไม่รับคำร้อง / ยกคำร้อง (เสนอ กกต. ส่วนกลาง)</option>
-                  <option>ขออนุมัติขยายระยะเวลาสืบสวน (15 วัน)</option>
-                  <option>ส่งสำนวนการสืบสวนให้ สนง.กกต. ส่วนกลาง</option>
-                  <option>เสนอความเห็นต่อคณะอนุวินิจฉัย</option>
-                  <option>บันทึกมติที่ประชุม กกต. วินิจฉัยชี้ขาด</option>
+                <select
+                  value={selectedActionValue}
+                  onChange={(e) => setSelectedActionValue(e.target.value)}
+                  className="w-full text-xs bg-[#F7FAFC] border border-[#E2E8F0] rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-[#1B3F8B] font-medium"
+                >
+                  {availableActions.map((act) => (
+                    <option key={act.value} value={act.value}>
+                      {act.label}
+                    </option>
+                  ))}
                 </select>
+                {selectedAction && (
+                  <p className="mt-1.5 text-[10px] text-slate-500 font-medium">
+                    คำอธิบายคำสั่ง: {selectedAction.desc}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[#2D3748] mb-1.5">
-                  บันทึกความเห็น / เหตุผลประกอบคำสั่ง
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  บันทึกความเห็น / ข้อเท็จจริง / เหตุผลประกอบคำสั่ง *
                 </label>
                 <textarea
                   rows={4}
@@ -363,7 +786,7 @@ export default function CaseDetailModal({ caseItem, onClose, readOnly = false, p
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#1B3F8B] hover:bg-[#1B3F8B] text-white text-xs font-medium transition-colors shadow-xs flex items-center gap-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-[#1B3F8B] hover:bg-[#15326f] text-white text-xs font-bold transition-colors shadow-xs flex items-center gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>บันทึกคำสั่งและลงนามอิเล็กทรอนิกส์</span>
@@ -378,7 +801,7 @@ export default function CaseDetailModal({ caseItem, onClose, readOnly = false, p
         <div className="bg-[#F7FAFC] border-t border-[#E2E8F0] px-6 py-3.5 flex items-center justify-between text-xs text-[#718096]">
           <div className="flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>ระบบบันทึก Audit Trail การเข้าดูสำนวนตามมาตรฐาน OWASP และ PDPA</span>
+            <span>ระบบบันทึก Audit Trail การเข้าดูและสั่งการสำนวนตามมาตรฐาน OWASP และ PDPA</span>
           </div>
           <button
             onClick={() => window.print()}

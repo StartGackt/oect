@@ -42,7 +42,14 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
   const [officer, setOfficer] = useState<string>("วรากร กรณีศึกษา011");
   const [isDxcVerified, setIsDxcVerified] = useState<boolean>(true);
   const [evidenceFileCount, setEvidenceFileCount] = useState<number>(0);
+  // Proxy Delegation State (ข้อ 25)
+  const [isDelegated, setIsDelegated] = useState<boolean>(false);
+  const [proxyName, setProxyName] = useState<string>("");
+  const [proxyIdCard, setProxyIdCard] = useState<string>("");
+  const [proxyRelationship, setProxyRelationship] = useState<string>("ทนายความ / ผู้รับมอบอำนาจ");
+  const [hasPowerOfAttorneyFile, setHasPowerOfAttorneyFile] = useState<boolean>(false);
   const [checklist, setChecklist] = useState<boolean[]>([true, true, false, false]);
+
   const [submittedCase, setSubmittedCase] = useState<ComplaintItem | null>(null);
   const [submittedAtText, setSubmittedAtText] = useState<string>("");
   const [dueDateText, setDueDateText] = useState<string>("");
@@ -77,6 +84,11 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
       slaDays: 3,
       remainingDays: 3,
       slaStatus: "NORMAL",
+      isDelegated,
+      proxyName: isDelegated ? proxyName : undefined,
+      proxyIdCard: isDelegated ? proxyIdCard : undefined,
+      proxyRelationship: isDelegated ? proxyRelationship : undefined,
+      powerOfAttorneyDoc: isDelegated ? "หนังสือมอบอำนาจ_สตว1_1.pdf" : undefined,
     };
 
     onAddCase(newCaseItem);
@@ -246,9 +258,72 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
                 </button> : <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700"><UserCheck className="h-3 w-3" /> ยืนยันตัวตนแล้ว</span>}
               </div>
 
+              {/* Proxy Selection Radio (ข้อ 25) */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-3.5 space-y-2">
+                <label className="block text-xs font-bold text-slate-800">รูปแบบการยื่นคำร้อง (ตามระเบียบ กกต. ข้อ ๒๕)</label>
+                <div className="flex flex-wrap gap-4 text-xs">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="delegation_choice"
+                      checked={!isDelegated}
+                      onChange={() => setIsDelegated(false)}
+                      className="text-[#1B3F8B]"
+                    />
+                    <span className="font-semibold text-slate-700">ยื่นคำร้องด้วยตนเอง</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="delegation_choice"
+                      checked={isDelegated}
+                      onChange={() => setIsDelegated(true)}
+                      className="text-[#1B3F8B]"
+                    />
+                    <span className="font-semibold text-purple-900">มอบอำนาจให้ผู้อื่นยื่นแทน (แนบแบบ สตว. ๑/๑)</span>
+                  </label>
+                </div>
+
+                {isDelegated && (
+                  <div className="mt-3 grid gap-3 sm:grid-cols-3 rounded-xl bg-purple-50/70 p-3 border border-purple-200">
+                    <div>
+                      <label className="block text-[10px] font-bold text-purple-900 mb-1">ชื่อผู้รับมอบอำนาจ *</label>
+                      <input
+                        type="text"
+                        required={isDelegated}
+                        value={proxyName}
+                        onChange={(e) => setProxyName(e.target.value)}
+                        placeholder="เช่น นายอนุรักษ์ ตัวแทน"
+                        className="w-full rounded-lg border border-purple-200 bg-white p-2 text-xs outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-purple-900 mb-1">เลขประจำตัว ปชช. 13 หลัก</label>
+                      <input
+                        type="text"
+                        value={proxyIdCard}
+                        onChange={(e) => setProxyIdCard(e.target.value)}
+                        placeholder="1-5099-*****"
+                        className="w-full rounded-lg border border-purple-200 bg-white p-2 text-xs outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-purple-900 mb-1">ความสัมพันธ์ / ฐานะ</label>
+                      <input
+                        type="text"
+                        value={proxyRelationship}
+                        onChange={(e) => setProxyRelationship(e.target.value)}
+                        placeholder="เช่น ทนายความ / ผู้แทน"
+                        className="w-full rounded-lg border border-purple-200 bg-white p-2 text-xs outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="grid gap-4 text-xs sm:grid-cols-2">
                 <PartyFields
-                  label="ชื่อผู้ร้องเรียน"
+                  label="ชื่อผู้ร้องเรียน (ผู้มอบอำนาจ)"
                   helper="เพิ่มผู้ร้องได้มากกว่า 1 ราย"
                   values={complainants}
                   placeholder="เช่น นายศุภชัย ทดสอบ"

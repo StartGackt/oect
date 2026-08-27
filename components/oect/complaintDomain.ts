@@ -11,6 +11,7 @@ export interface ComplaintItem {
   district: string;
   province: string;
   officer: string;
+  officerId?: string;
   complainants: string;
   respondent: string;
   allegation: string;
@@ -22,6 +23,29 @@ export interface ComplaintItem {
   slaDays: number;
   remainingDays: number;
   slaStatus: SlaStatus;
+  // Proxy / Delegation fields (ข้อ 25)
+  isDelegated?: boolean;
+  proxyName?: string;
+  proxyIdCard?: string;
+  proxyRelationship?: string;
+  powerOfAttorneyDoc?: string;
+  // Correction fields (ข้อ 26(2))
+  correctionRequested?: boolean;
+  correctionNote?: string;
+  correctionDeadline?: string;
+  correctionSubmitted?: boolean;
+  correctionSubmittedDate?: string;
+  correctionDoc?: string;
+  // Investigation Extension fields (ข้อ 41 ว.3)
+  extensionRequested?: boolean;
+  extensionDays?: number;
+  extensionReason?: string;
+  extensionApproved?: boolean;
+  // Official Ruling & Decision
+  officialDecision?: string;
+  decisionNote?: string;
+  decidedBy?: string;
+  decidedDate?: string;
 }
 
 export const ELECTION_TYPE_OPTIONS = [

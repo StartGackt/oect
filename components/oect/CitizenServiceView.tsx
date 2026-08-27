@@ -26,6 +26,7 @@ interface CitizenServiceViewProps {
   onTabChange: (tab: CitizenTab) => void;
   onOpenNewComplaint: () => void;
   onSelectCase: (caseItem: ComplaintItem) => void;
+  onUpdateCase?: (updated: ComplaintItem) => void;
 }
 
 export type CitizenTab = "overview" | "new" | "tracking" | "correction" | "result" | "history" | "profile";
@@ -34,22 +35,37 @@ const TAB_META: Record<CitizenTab, { title: string; description: string }> = {
   overview: { title: "ภาพรวมคำร้องของฉัน", description: "ตรวจสอบสถานะล่าสุดและรายการที่ต้องดำเนินการ" },
   new: { title: "ยื่นคำร้องใหม่", description: "กรอกข้อมูลคำร้องและแนบเอกสารหลักฐาน" },
   tracking: { title: "ติดตามสถานะคำร้อง", description: "ดูลำดับขั้นตอนและกรอบเวลาดำเนินการ" },
-  correction: { title: "แก้ไขและเพิ่มเติมคำร้อง", description: "ส่งข้อมูลหรือเอกสารเพิ่มเติมภายในกำหนด" },
+  correction: { title: "แก้ไขและเพิ่มเติมคำร้อง (ข้อ ๒๖(๒))", description: "ส่งข้อมูลหรือเอกสารเพิ่มเติมภายในกำหนด" },
   result: { title: "ผลการพิจารณา", description: "ตรวจสอบผลและดาวน์โหลดเอกสารที่เปิดเผยได้" },
   history: { title: "ประวัติคำร้องของฉัน", description: "ค้นหาและตรวจสอบคำร้องที่เคยยื่นทั้งหมด" },
   profile: { title: "ข้อมูลส่วนตัว", description: "ตรวจสอบข้อมูลบัญชีและช่องทางการแจ้งเตือน" },
 };
 
-export default function CitizenServiceView({ cases, activeTab, onTabChange, onOpenNewComplaint, onSelectCase }: CitizenServiceViewProps) {
+export default function CitizenServiceView({ cases, activeTab, onTabChange, onOpenNewComplaint, onSelectCase, onUpdateCase }: CitizenServiceViewProps) {
   const [search, setSearch] = useState("");
   const [uploaded, setUploaded] = useState(false);
+  const [correctionSubmittedSuccess, setCorrectionSubmittedSuccess] = useState(false);
   const myCases = useMemo(() => cases.filter((item) => item.complainants.includes(CURRENT_CITIZEN.name)), [cases]);
   const currentCase = myCases.find((item) => item.slaStatus !== "COMPLETED") ?? myCases[0];
-  const correctionCase = myCases.find((item) => item.slaStatus === "OVERDUE" || item.slaStatus === "NEAR_DUE");
+  const correctionCase = myCases.find((item) => item.correctionRequested) ?? myCases.find((item) => item.slaStatus === "OVERDUE" || item.slaStatus === "NEAR_DUE");
   const completedCase = myCases.find((item) => item.slaStatus === "COMPLETED");
   const processingCount = myCases.filter((item) => item.slaStatus !== "COMPLETED").length;
   const completedCount = myCases.filter((item) => item.slaStatus === "COMPLETED").length;
   const pageMeta = TAB_META[activeTab];
+
+  const handleSendCorrection = () => {
+    if (!correctionCase) return;
+    const updated: ComplaintItem = {
+      ...correctionCase,
+      correctionSubmitted: true,
+      correctionSubmittedDate: new Date().toLocaleDateString("th-TH"),
+      correctionDoc: "evidence_additional_docs.pdf",
+    };
+    if (onUpdateCase) {
+      onUpdateCase(updated);
+    }
+    setCorrectionSubmittedSuccess(true);
+  };
 
   return (
     <div className="space-y-6 pb-14">
@@ -116,8 +132,22 @@ export default function CitizenServiceView({ cases, activeTab, onTabChange, onOp
           <div className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-800">แจ้งตามข้อ 26(2)</span><h2 className="mt-3 text-lg font-bold text-slate-950">รายการที่ต้องแก้ไข/เพิ่มเติม</h2><p className="mt-1 text-xs text-slate-500">คำร้อง {correctionCase.caseNumber}</p></div><div className="rounded-xl bg-rose-50 px-4 py-3 text-center text-rose-700 ring-1 ring-rose-200"><div className="text-lg font-bold">{getSlaLabel(correctionCase)}</div><div className="text-[9px] font-bold uppercase">กรอบเวลาปัจจุบัน</div></div></div>
             <div className="mt-6 space-y-3"><CorrectionItem done title="สำเนาบัตรประชาชน" detail="ตรวจสอบผ่าน DXC แล้ว" /><CorrectionItem title="หลักฐานการอยู่อาศัยในเขตเลือกตั้ง" detail="กรุณาแนบเอกสารที่ออกไม่เกิน 90 วัน" /><CorrectionItem title="บันทึกถ้อยคำเพิ่มเติม" detail="ระบุแหล่งที่มาของไฟล์วิดีโอหลักฐาน" /></div>
-            <button type="button" onClick={() => setUploaded(true)} className={`mt-6 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition ${uploaded ? "border-emerald-300 bg-emerald-50" : "border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50"}`}><UploadCloud className={`h-8 w-8 ${uploaded ? "text-emerald-600" : "text-slate-400"}`} /><div className="mt-3 text-xs font-bold text-slate-800">{uploaded ? "อัปโหลด evidence_address.pdf แล้ว" : "ลากไฟล์มาวาง หรือคลิกเพื่อเลือกหลายไฟล์"}</div><div className="mt-1 text-[10px] text-slate-500">PDF, JPG, PNG, MP4 · สูงสุด 25 MB ต่อไฟล์</div></button>
-            <div className="mt-5 flex justify-end"><button type="button" disabled={!uploaded} className="btn-primary disabled:cursor-not-allowed disabled:opacity-40"><UploadCloud className="h-4 w-4" /> ส่งข้อมูลเพิ่มเติม</button></div>
+            {correctionSubmittedSuccess ? (
+              <div className="mt-5 rounded-xl bg-emerald-100 p-4 text-xs font-bold text-emerald-800 flex items-center gap-2">
+                <Check className="h-4 w-4" /> ส่งเอกสารเพิ่มเติมให้ สนง.กกต.จว. เรียบร้อยแล้ว เจ้าหน้าที่จะทำการตรวจสอบในขั้นตอนถัดไป
+              </div>
+            ) : (
+              <div className="mt-5 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSendCorrection}
+                  disabled={!uploaded}
+                  className="btn-primary disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <UploadCloud className="h-4 w-4" /> ส่งข้อมูลเพิ่มเติม
+                </button>
+              </div>
+            )}
           </div>
           <aside className="rounded-2xl border border-slate-200 bg-[#1B3F8B] p-5 text-white shadow-sm"><h3 className="text-sm font-bold">ต้องการบันทึกถ้อยคำ?</h3><p className="mt-2 text-xs leading-6 text-slate-400">สามารถนัดหมายเจ้าหน้าที่ สนง.กกต.จว. เพื่อบันทึกถ้อยคำประกอบคำร้องแทนการอัปโหลดได้</p><button type="button" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white/10 px-3.5 py-2.5 text-xs font-bold hover:bg-white/15"><CalendarDays className="h-4 w-4 text-amber-300" /> นัดหมายเจ้าหน้าที่</button></aside>
         </section> : <EmptyState title="ไม่มีคำร้องที่ต้องแก้ไขหรือเพิ่มเติม" description="ระบบจะแจ้งเตือนและแสดงรายการในหน้านี้เมื่อเจ้าหน้าที่ขอข้อมูลเพิ่มเติม" />
