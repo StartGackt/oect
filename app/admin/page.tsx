@@ -259,18 +259,6 @@ export default function AdminConsolePage() {
             </Link>
           </div>
 
-          <div className="hidden w-full max-w-md items-center lg:flex">
-            <Search className="pointer-events-none relative left-9 h-4 w-4 text-slate-400" />
-            <input
-              value={globalSearch}
-              onChange={(event) => setGlobalSearch(event.target.value)}
-              onFocus={() => selectView("cases")}
-              placeholder="ค้นหาเลขเรื่อง ผู้ร้อง ข้อกล่าวหา หรือจังหวัด"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-xs outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-              aria-label="ค้นหาเรื่องร้องเรียนในศูนย์ผู้ดูแลระบบ"
-            />
-          </div>
-
           <div className="flex items-center gap-3">
             <button
               type="button"
