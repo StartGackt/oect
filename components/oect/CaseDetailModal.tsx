@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { 
-  X, 
-  FileText, 
-  User, 
-  ShieldCheck, 
-  Send, 
-  Download, 
-  Printer, 
-  Eye, 
-  EyeOff, 
+import { useRef, useState } from "react";
+import {
+  X,
+  FileText,
+  User,
+  ShieldCheck,
+  Send,
+  Download,
+  Printer,
+  Eye,
+  EyeOff,
   Paperclip,
   CheckCircle2,
   AlertCircle,
@@ -19,10 +19,29 @@ import {
   Gavel,
   BadgeCheck,
   FileCheck2,
-  Users
+  Users,
+  Pencil,
+  Save
 } from "lucide-react";
-import { WORKFLOW_STEPS, formatThaiDate, getSlaLabel, type ComplaintItem } from "@/components/oect/complaintDomain";
+import { WORKFLOW_STEPS, formatThaiDate, getSlaLabel, getWorkflowStep, type ComplaintItem, type StepLogEntry } from "@/components/oect/complaintDomain";
 import { useAuditLogStore, type SystemRoleId, type AuditActionType } from "@/components/oect/rbacDomain";
+
+// ผู้บริหารระดับ กกต./ลธ.กกต. ส่วนกลาง เห็นภาพรวมใหญ่ 365 วันนับจากวันประกาศผล ตามภาคผนวก ข ข้อ ๔.๔ หน้าจอที่ ๔ ส่วนที่ ๒
+const EXECUTIVE_OVERVIEW_ROLES: SystemRoleId[] = ["sequential", "subcommittee", "commission", "secretary", "admin"];
+const OVERALL_TIMEFRAME_DAYS = 365;
+
+// เฉพาะบทบาทที่บันทึกรับเรื่อง/ตรวจคำร้องระดับจังหวัดเท่านั้นที่แก้ไขข้อมูลที่คีย์ผิดของคำร้องเดิมได้ ไม่ให้ส่วนกลางย้อนแก้ข้อมูลสำนวนที่ปิดชั้นแล้ว
+const DATA_EDIT_ROLES: SystemRoleId[] = ["intake", "review-1", "review-2", "director", "admin"];
+function canEditCaseData(roleId: SystemRoleId) {
+  return DATA_EDIT_ROLES.includes(roleId);
+}
+
+interface CaseEditForm {
+  complainants: string;
+  respondent: string;
+  allegation: string;
+  details: string;
+}
 
 interface CaseDetailModalProps {
   caseItem: ComplaintItem;
@@ -316,6 +335,111 @@ export default function CaseDetailModal({
 
   const selectedAction = availableActions.find((a) => a.value === selectedActionValue) || availableActions[0];
 
+  const [isEditingCase, setIsEditingCase] = useState(false);
+  const [editForm, setEditForm] = useState<CaseEditForm>({
+    complainants: caseItem.complainants,
+    respondent: caseItem.respondent,
+    allegation: caseItem.allegation,
+    details: caseItem.details,
+  });
+
+  const startEditingCase = () => {
+    setEditForm({
+      complainants: caseItem.complainants,
+      respondent: caseItem.respondent,
+      allegation: caseItem.allegation,
+      details: caseItem.details,
+    });
+    setIsEditingCase(true);
+  };
+
+  const handleSaveDataCorrection = () => {
+    const updatedCase: ComplaintItem = { ...caseItem, ...editForm };
+    appendAuditLog({
+      userId: currentUserRole === "admin" ? "usr-admin" : "usr-officer",
+      userName: currentUserName,
+      userRole: currentUserRole,
+      userRoleLabel: currentUserRole.toUpperCase(),
+      action: "CASE_DATA_CORRECTED",
+      actionLabel: "แก้ไขข้อมูลคำร้องที่คีย์ผิด",
+      caseNumber: caseItem.caseNumber,
+      province: caseItem.province,
+      ipAddress: "192.168.10.25",
+      status: "SUCCESS",
+      details: `แก้ไขข้อมูลผู้ร้อง/ผู้ถูกร้อง/ข้อกล่าวหา/รายละเอียดพฤติการณ์ โดย ${currentUserName}`,
+    });
+    if (onUpdateCase) {
+      onUpdateCase(updatedCase);
+    }
+    setIsEditingCase(false);
+    setActionSuccessMessage("บันทึกการแก้ไขข้อมูลคำร้องสำเร็จ");
+    window.setTimeout(() => setActionSuccessMessage(null), 1600);
+  };
+
+  const [viewedAtMs] = useState(() => Date.now());
+  const stepLogCounterRef = useRef(0);
+
+  const [editingStepId, setEditingStepId] = useState<number | null>(null);
+  const [stepNoteDraft, setStepNoteDraft] = useState("");
+  const [stepExtendEnabled, setStepExtendEnabled] = useState(false);
+  const [stepExtendDays, setStepExtendDays] = useState(15);
+
+  const resetStepDraft = () => {
+    setEditingStepId(null);
+    setStepNoteDraft("");
+    setStepExtendEnabled(false);
+    setStepExtendDays(15);
+  };
+
+  const handleSaveStepLog = (stepId: number, isCurrentStep: boolean) => {
+    if (!stepNoteDraft.trim() && !stepExtendEnabled) return;
+    stepLogCounterRef.current += 1;
+    const entry: StepLogEntry = {
+      id: `log-${viewedAtMs}-${stepLogCounterRef.current}`,
+      stepId,
+      type: stepExtendEnabled ? "extension" : "note",
+      note: stepNoteDraft.trim() || `ขอขยายเวลา ${stepExtendDays} วัน`,
+      extensionDays: stepExtendEnabled ? stepExtendDays : undefined,
+      author: currentUserName,
+      timestamp: new Date().toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" }),
+    };
+    const updatedCase: ComplaintItem = {
+      ...caseItem,
+      stepLogs: [...(caseItem.stepLogs ?? []), entry],
+      ...(stepExtendEnabled && isCurrentStep ? { remainingDays: Math.max(caseItem.remainingDays, 0) + stepExtendDays } : {}),
+    };
+    appendAuditLog({
+      userId: currentUserRole === "admin" ? "usr-admin" : "usr-officer",
+      userName: currentUserName,
+      userRole: currentUserRole,
+      userRoleLabel: currentUserRole.toUpperCase(),
+      action: stepExtendEnabled ? "CASE_EXTENSION_REQUESTED" : "CASE_STEP_NOTE_ADDED",
+      actionLabel: stepExtendEnabled ? `ขอขยายเวลาขั้นตอน "${getWorkflowStep(stepId).title}"` : `บันทึกรายละเอียดขั้นตอน "${getWorkflowStep(stepId).title}"`,
+      caseNumber: caseItem.caseNumber,
+      province: caseItem.province,
+      ipAddress: "192.168.10.25",
+      status: "SUCCESS",
+      details: entry.note,
+    });
+    if (onUpdateCase) {
+      onUpdateCase(updatedCase);
+    }
+    resetStepDraft();
+  };
+
+  const showExecutiveOverview = !readOnly && EXECUTIVE_OVERVIEW_ROLES.includes(currentUserRole);
+  const announcementDate = new Date(`${caseItem.announcementDate}T00:00:00`);
+  const daysElapsed = Number.isNaN(announcementDate.getTime())
+    ? 0
+    : Math.max(0, Math.floor((viewedAtMs - announcementDate.getTime()) / 86400000));
+  const daysOverdue = caseItem.slaStatus === "COMPLETED" ? 0 : Math.max(0, daysElapsed - OVERALL_TIMEFRAME_DAYS);
+  const overviewProgressPercent = Math.min(100, Math.round((daysElapsed / OVERALL_TIMEFRAME_DAYS) * 100));
+  const overviewStatusLabel = caseItem.slaStatus === "COMPLETED"
+    ? "ดำเนินการแล้วเสร็จ"
+    : daysOverdue > 0
+    ? "เกินกรอบเวลาภาพรวม 365 วัน"
+    : "อยู่ระหว่างกรอบเวลาภาพรวม";
+
   const handleSaveAction = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAction) return;
@@ -497,11 +621,17 @@ export default function CaseDetailModal({
             <div className="space-y-6">
               
               {/* Top Key Info Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#F7FAFC] p-4 rounded-2xl border border-[#EDF2F7]">
+              <div className={`grid grid-cols-2 gap-3 bg-[#F7FAFC] p-4 rounded-2xl border border-[#EDF2F7] ${caseItem.receiptNumber ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
                 <div>
                   <span className="text-[10px] text-[#718096] uppercase font-medium">วันที่รับคำร้อง</span>
                   <div className="text-xs font-semibold text-[#1A202C]">{formatThaiDate(caseItem.receivedDate)}</div>
                 </div>
+                {caseItem.receiptNumber && (
+                  <div>
+                    <span className="text-[10px] text-[#718096] uppercase font-medium">เลขรับเรื่องร้องเรียน</span>
+                    <div className="text-xs font-semibold text-[#1A202C]">{caseItem.receiptNumber}</div>
+                  </div>
+                )}
                 <div>
                   <span className="text-[10px] text-[#718096] uppercase font-medium">วันที่เลือกตั้ง</span>
                   <div className="text-xs font-semibold text-[#1A202C]">{formatThaiDate(caseItem.electionDate)}</div>
@@ -515,6 +645,51 @@ export default function CaseDetailModal({
                   <div className="text-xs font-semibold text-[#1B3F8B]">จ.{caseItem.province} {caseItem.constituency}</div>
                 </div>
               </div>
+
+              {!readOnly && canEditCaseData(currentUserRole) && (
+                <div className="flex items-center justify-end">
+                  {isEditingCase ? (
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={() => setIsEditingCase(false)} className="px-3 py-1.5 text-xs text-[#718096] hover:text-[#1A202C]">ยกเลิก</button>
+                      <button type="button" onClick={handleSaveDataCorrection} className="inline-flex items-center gap-1.5 rounded-xl bg-[#1B3F8B] px-3.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[#15326f]">
+                        <Save className="h-3.5 w-3.5" /> บันทึกการแก้ไข
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={startEditingCase} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3.5 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-blue-300 hover:text-blue-700">
+                      <Pencil className="h-3.5 w-3.5" /> แก้ไขข้อมูลที่คีย์ผิด
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {showExecutiveOverview && (
+                <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-indigo-900">สถานะภาพรวมใหญ่ (นับจากวันประกาศผล 365 วัน)</span>
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${daysOverdue > 0 ? "bg-rose-100 text-rose-700" : caseItem.slaStatus === "COMPLETED" ? "bg-emerald-100 text-emerald-700" : "bg-indigo-100 text-indigo-700"}`}>
+                      {overviewStatusLabel}
+                    </span>
+                  </div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-white">
+                    <div className={`h-full rounded-full ${daysOverdue > 0 ? "bg-rose-500" : "bg-indigo-600"}`} style={{ width: `${overviewProgressPercent}%` }} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <div>
+                      <div className="text-[9px] font-bold uppercase text-indigo-500">จำนวนวันที่ดำเนินการแล้ว</div>
+                      <div className="mt-1 text-sm font-bold text-indigo-950">{daysElapsed} วัน</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] font-bold uppercase text-indigo-500">จำนวนวันที่เกินกำหนด</div>
+                      <div className="mt-1 text-sm font-bold text-indigo-950">{daysOverdue > 0 ? `${daysOverdue} วัน` : "-"}</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] font-bold uppercase text-indigo-500">กรอบเวลาภาพรวม</div>
+                      <div className="mt-1 text-sm font-bold text-indigo-950">{OVERALL_TIMEFRAME_DAYS} วัน</div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {!readOnly && (
                 <div className="grid gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 sm:grid-cols-[auto_1fr_1fr] sm:items-center">
@@ -553,10 +728,19 @@ export default function CaseDetailModal({
                       ผู้มีสิทธิเลือกตั้งในเขต (ข้อ 23)
                     </span>
                   </div>
-                  <div className="text-xs text-[#2D3748] font-medium leading-relaxed bg-[#F7FAFC] p-3 rounded-xl border border-[#EDF2F7]">
-                    {maskName(caseItem.complainants)}
-                  </div>
-                  
+                  {isEditingCase ? (
+                    <input
+                      type="text"
+                      value={editForm.complainants}
+                      onChange={(event) => setEditForm((current) => ({ ...current, complainants: event.target.value }))}
+                      className="w-full rounded-xl border border-blue-300 bg-white p-3 text-xs font-medium text-[#2D3748] outline-none focus:border-blue-500"
+                    />
+                  ) : (
+                    <div className="text-xs text-[#2D3748] font-medium leading-relaxed bg-[#F7FAFC] p-3 rounded-xl border border-[#EDF2F7]">
+                      {maskName(caseItem.complainants)}
+                    </div>
+                  )}
+
                   {/* Proxy / Delegation Badge */}
                   {caseItem.isDelegated ? (
                     <div className="mt-2 rounded-xl bg-purple-50 p-2.5 border border-purple-200 text-xs text-purple-900">
@@ -587,9 +771,18 @@ export default function CaseDetailModal({
                       ผู้สมัครรับเลือกตั้ง
                     </span>
                   </div>
-                  <div className="text-xs text-[#2D3748] font-medium leading-relaxed bg-[#F7FAFC] p-3 rounded-xl border border-[#EDF2F7]">
-                    {maskName(caseItem.respondent)}
-                  </div>
+                  {isEditingCase ? (
+                    <input
+                      type="text"
+                      value={editForm.respondent}
+                      onChange={(event) => setEditForm((current) => ({ ...current, respondent: event.target.value }))}
+                      className="w-full rounded-xl border border-blue-300 bg-white p-3 text-xs font-medium text-[#2D3748] outline-none focus:border-blue-500"
+                    />
+                  ) : (
+                    <div className="text-xs text-[#2D3748] font-medium leading-relaxed bg-[#F7FAFC] p-3 rounded-xl border border-[#EDF2F7]">
+                      {maskName(caseItem.respondent)}
+                    </div>
+                  )}
                   <div className="text-[10px] text-[#718096]">
                     ✓ ตรวจสอบสถานะผู้สมัครผ่านระบบ PRAXTICOL แล้ว
                   </div>
@@ -599,17 +792,42 @@ export default function CaseDetailModal({
 
               {/* Allegation & Details */}
               <div className="bg-white p-5 rounded-2xl border border-[#E2E8F0] shadow-2xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-[#1A202C]">
-                    ข้อกล่าวหา: <strong className="text-red-600 font-bold">{caseItem.allegation}</strong>
-                  </span>
-                  <span className="text-[10px] text-[#718096]">
-                    {readOnly ? "ข้อมูลความเห็นภายในถูกปกปิด" : `ผู้รับผิดชอบ: ${caseItem.officer}`}
-                  </span>
-                </div>
-                <div className="text-xs text-[#4A5568] leading-relaxed bg-[#F7FAFC] p-4 rounded-xl border border-[#EDF2F7]">
-                  {caseItem.details}
-                </div>
+                {isEditingCase ? (
+                  <>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-[#1A202C]">ข้อกล่าวหา</label>
+                      <input
+                        type="text"
+                        value={editForm.allegation}
+                        onChange={(event) => setEditForm((current) => ({ ...current, allegation: event.target.value }))}
+                        className="w-full rounded-xl border border-blue-300 bg-white p-2.5 text-xs font-medium text-red-700 outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-[#1A202C]">รายละเอียดพฤติการณ์</label>
+                      <textarea
+                        rows={4}
+                        value={editForm.details}
+                        onChange={(event) => setEditForm((current) => ({ ...current, details: event.target.value }))}
+                        className="w-full rounded-xl border border-blue-300 bg-white p-4 text-xs leading-relaxed text-[#4A5568] outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-[#1A202C]">
+                        ข้อกล่าวหา: <strong className="text-red-600 font-bold">{caseItem.allegation}</strong>
+                      </span>
+                      <span className="text-[10px] text-[#718096]">
+                        {readOnly ? "ข้อมูลความเห็นภายในถูกปกปิด" : `ผู้รับผิดชอบ: ${caseItem.officer}`}
+                      </span>
+                    </div>
+                    <div className="text-xs text-[#4A5568] leading-relaxed bg-[#F7FAFC] p-4 rounded-xl border border-[#EDF2F7]">
+                      {caseItem.details}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Official Decision Display if any */}
@@ -679,10 +897,12 @@ export default function CaseDetailModal({
                 {workflowSteps.map((step) => {
                   const isCurrent = step.id === caseItem.stageId;
                   const isPast = step.id < caseItem.stageId;
+                  const stepLogs = (caseItem.stepLogs ?? []).filter((log) => log.stepId === step.id);
+                  const isEditingStep = editingStepId === step.id;
                   return (
                     <div
                       key={step.id}
-                      className={`p-3.5 rounded-2xl border flex items-center justify-between transition-all ${
+                      className={`p-3.5 rounded-2xl border transition-all ${
                         isCurrent
                           ? "bg-[#4FB3E8]/10 border-[#1B3F8B] shadow-xs"
                           : isPast
@@ -690,36 +910,94 @@ export default function CaseDetailModal({
                           : "bg-white border-[#EDF2F7] opacity-50"
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                            isCurrent
-                              ? "bg-[#1B3F8B] text-white animate-pulse"
-                              : isPast
-                              ? "bg-emerald-500 text-white"
-                              : "bg-[#E2E8F0] text-[#718096]"
-                          }`}
-                        >
-                          {isPast ? "✓" : step.id}
-                        </div>
-                        <div>
-                          <div className={`text-xs font-medium ${isCurrent ? "text-[#1B3F8B] font-semibold" : "text-[#2D3748]"}`}>
-                            {step.title}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                              isCurrent
+                                ? "bg-[#1B3F8B] text-white animate-pulse"
+                                : isPast
+                                ? "bg-emerald-500 text-white"
+                                : "bg-[#E2E8F0] text-[#718096]"
+                            }`}
+                          >
+                            {isPast ? "✓" : step.id}
                           </div>
-                          <div className="text-[10px] text-[#718096]">{step.dept}</div>
+                          <div>
+                            <div className={`text-xs font-medium ${isCurrent ? "text-[#1B3F8B] font-semibold" : "text-[#2D3748]"}`}>
+                              {step.title}
+                            </div>
+                            <div className="text-[10px] text-[#718096]">{step.dept}</div>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="text-[11px] font-semibold text-[#4A5568] bg-white px-2.5 py-0.5 rounded-full border border-[#E2E8F0]">
+                            SLA: {step.sla}
+                          </span>
+                          {isCurrent && (
+                            <div className="text-[10px] text-[#1B3F8B] font-medium mt-0.5">
+                              📍 กำลังดำเนินการในขั้นตอนนี้
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      <div className="text-right">
-                        <span className="text-[11px] font-semibold text-[#4A5568] bg-white px-2.5 py-0.5 rounded-full border border-[#E2E8F0]">
-                          SLA: {step.sla}
-                        </span>
-                        {isCurrent && (
-                          <div className="text-[10px] text-[#1B3F8B] font-medium mt-0.5">
-                            📍 กำลังดำเนินการในขั้นตอนนี้
+                      {stepLogs.length > 0 && (
+                        <div className="mt-3 space-y-1.5 border-t border-dashed border-slate-300/70 pt-3">
+                          {stepLogs.map((log) => (
+                            <div key={log.id} className="rounded-lg bg-white/80 p-2 text-[10px] leading-4 text-slate-600">
+                              <span className={`mr-1.5 rounded px-1.5 py-0.5 font-bold ${log.type === "extension" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
+                                {log.type === "extension" ? `ขยาย ${log.extensionDays} วัน` : "บันทึก"}
+                              </span>
+                              {log.note} <span className="text-slate-400">— {log.author}, {log.timestamp}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {!readOnly && (
+                        isEditingStep ? (
+                          <div className="mt-3 space-y-2 border-t border-dashed border-slate-300/70 pt-3">
+                            <textarea
+                              rows={2}
+                              value={stepNoteDraft}
+                              onChange={(event) => setStepNoteDraft(event.target.value)}
+                              placeholder="บันทึกรายละเอียดการดำเนินการในขั้นตอนนี้..."
+                              className="w-full rounded-lg border border-slate-200 bg-white p-2 text-[10px] outline-none focus:border-blue-400"
+                            />
+                            <label className="flex flex-wrap items-center gap-2 text-[10px] font-semibold text-slate-600">
+                              <input type="checkbox" checked={stepExtendEnabled} onChange={(event) => setStepExtendEnabled(event.target.checked)} />
+                              ขอขยายระยะเวลาขั้นตอนนี้
+                              {stepExtendEnabled && (
+                                <>
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={90}
+                                    value={stepExtendDays}
+                                    onChange={(event) => setStepExtendDays(Number(event.target.value) || 1)}
+                                    className="w-16 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-[10px] outline-none"
+                                  />
+                                  <span>วัน</span>
+                                </>
+                              )}
+                            </label>
+                            <div className="flex justify-end gap-2">
+                              <button type="button" onClick={resetStepDraft} className="px-2.5 py-1 text-[10px] text-[#718096] hover:text-[#1A202C]">ยกเลิก</button>
+                              <button type="button" onClick={() => handleSaveStepLog(step.id, isCurrent)} className="rounded-lg bg-[#1B3F8B] px-3 py-1 text-[10px] font-bold text-white hover:bg-[#15326f]">บันทึก</button>
+                            </div>
                           </div>
-                        )}
-                      </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { setEditingStepId(step.id); setStepNoteDraft(""); setStepExtendEnabled(false); setStepExtendDays(15); }}
+                            className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 hover:underline"
+                          >
+                            <Pencil className="h-3 w-3" /> เพิ่มรายละเอียด / ขยายเวลา
+                          </button>
+                        )
+                      )}
                     </div>
                   );
                 })}

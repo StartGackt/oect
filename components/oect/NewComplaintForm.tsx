@@ -15,27 +15,31 @@ import {
   CalendarDays,
   ArrowLeft
 } from "lucide-react";
-import { ALLEGATION_OPTIONS, CURRENT_CITIZEN, ELECTION_TYPE_OPTIONS, getProvinceCode, type ComplaintItem } from "@/components/oect/complaintDomain";
+import { ALLEGATION_OPTIONS, CURRENT_CITIZEN, ELECTION_TYPE_OPTIONS, getProvinceCode, type CitizenAccount, type ComplaintItem } from "@/components/oect/complaintDomain";
 
 interface NewComplaintFormProps {
   onClose: () => void;
   onAddCase: (newCase: ComplaintItem) => void;
   mode?: "citizen" | "officer";
   presentation?: "modal" | "page";
+  currentCitizen?: CitizenAccount;
 }
 
-export default function NewComplaintForm({ onClose, onAddCase, mode = "officer", presentation = "modal" }: NewComplaintFormProps) {
+export default function NewComplaintForm({ onClose, onAddCase, mode = "officer", presentation = "modal", currentCitizen = CURRENT_CITIZEN }: NewComplaintFormProps) {
   const [complaintKind, setComplaintKind] = useState<string>("คำร้อง");
   const [userStatus, setUserStatus] = useState<string>("ผู้มีสิทธิเลือกตั้งในเขต");
   const [filingPlace, setFilingPlace] = useState<string>(mode === "citizen" ? "ระบบออนไลน์ ECT-CMS" : "สนง.กกต.จว.");
   const [electionType, setElectionType] = useState<string>("สส.");
   const [electionDate, setElectionDate] = useState<string>("2026-02-08");
   const [announcementDate, setAnnouncementDate] = useState<string>("2026-02-15");
-  const [province, setProvince] = useState<string>(mode === "citizen" ? CURRENT_CITIZEN.province : "กรุงเทพมหานคร");
+  // Paper-based intake (หมายเหตุ ข้อ ๖.๑): พนักงานคีย์วันที่ยื่นจริงและเลขรับจากใบรับคำร้องกระดาษ
+  const [filedDate, setFiledDate] = useState<string>(() => new Date().toISOString().split("T")[0]);
+  const [receiptNumber, setReceiptNumber] = useState<string>("");
+  const [province, setProvince] = useState<string>(mode === "citizen" ? currentCitizen.province : "กรุงเทพมหานคร");
   const [district, setDistrict] = useState<string>(mode === "citizen" ? "เมืองเชียงใหม่" : "พระนคร");
-  const [constituency, setConstituency] = useState<string>(mode === "citizen" ? CURRENT_CITIZEN.constituency : "เขตเลือกตั้งที่ 1");
+  const [constituency, setConstituency] = useState<string>(mode === "citizen" ? currentCitizen.constituency : "เขตเลือกตั้งที่ 1");
   const missionGroup = "สืบสวนและไต่สวน";
-  const [complainants, setComplainants] = useState<string[]>([mode === "citizen" ? CURRENT_CITIZEN.name : ""]);
+  const [complainants, setComplainants] = useState<string[]>([mode === "citizen" ? currentCitizen.name : ""]);
   const [respondents, setRespondents] = useState<string[]>([""]);
   const [selectedAllegations, setSelectedAllegations] = useState<string[]>([ALLEGATION_OPTIONS[0]]);
   const [details, setDetails] = useState<string>("");
@@ -68,12 +72,13 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
       announcementDate,
       caseNumber: generatedCaseNum,
       electionDate,
-      receivedDate: new Date().toISOString().split("T")[0],
+      receivedDate: mode === "officer" ? filedDate : new Date().toISOString().split("T")[0],
+      receiptNumber: mode === "officer" ? receiptNumber : undefined,
       constituency,
       district,
       province,
       officer,
-      complainants: complainants.filter(Boolean).join(", ") || CURRENT_CITIZEN.name,
+      complainants: complainants.filter(Boolean).join(", ") || currentCitizen.name,
       respondent: respondents.filter(Boolean).join(", ") || "นายธนวัฒน์ ตัวอย่างผู้ถูกร้อง",
       allegation: selectedAllegations.join(", "),
       details: details || "มีการให้ เสนอให้ หรือสัญญาว่าจะให้เงินหรือผลประโยชน์แก่ผู้มีสิทธิเลือกตั้ง",
@@ -104,14 +109,14 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
         {/* Header */}
         {presentation === "page" ? (
           <div className="border-b border-slate-200 bg-white px-5 py-5 sm:px-8">
-            <div className="text-[10px] font-medium text-slate-400">บริการผู้ร้องเรียน / ยื่นคำร้องใหม่</div>
+            <div className="text-[10px] font-medium text-slate-400">{mode === "citizen" ? "บริการผู้ร้องเรียน / ยื่นคำร้องใหม่" : "ระบบงานเจ้าหน้าที่ / บันทึกรับคำร้องใหม่"}</div>
             <div className="mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-3">
               <button type="button" onClick={onClose} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-[10px] font-semibold text-slate-600 transition hover:border-[#4FB3E8] hover:text-[#1B3F8B]"><ArrowLeft className="h-4 w-4" /> กลับ</button>
               <div className="text-center">
                 <span className="text-[10px] font-semibold uppercase tracking-[.14em] text-[#4FB3E8]">Election complaint form</span>
-                <h2 id="new-complaint-title" className="mt-1 text-lg font-semibold text-[#1B3F8B] sm:text-xl">ยื่นคำร้องคัดค้านการเลือกตั้ง</h2>
+                <h2 id="new-complaint-title" className="mt-1 text-lg font-semibold text-[#1B3F8B] sm:text-xl">{mode === "citizen" ? "ยื่นคำร้องคัดค้านการเลือกตั้ง" : "บันทึกรับคำร้องเรียนใหม่เข้าสู่ระบบ"}</h2>
               </div>
-              <span className="hidden rounded-full bg-[#FFD600]/15 px-3 py-1.5 text-[10px] font-semibold text-[#1B3F8B] sm:inline-flex">บันทึกร่างอัตโนมัติ</span>
+              {mode === "citizen" && <span className="hidden rounded-full bg-[#FFD600]/15 px-3 py-1.5 text-[10px] font-semibold text-[#1B3F8B] sm:inline-flex">บันทึกร่างอัตโนมัติ</span>}
             </div>
           </div>
         ) : (
@@ -135,6 +140,7 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
               <div><strong className="text-[#718096]">เลขที่เรื่องร้องเรียน:</strong> <span className="font-bold text-[#1B3F8B] text-sm">{submittedCase.caseNumber}</span></div>
               <div><strong className="text-[#718096]">ประเภท:</strong> {complaintKind} · {userStatus}</div>
               <div><strong className="text-[#718096]">วัน/เวลาที่ยื่น:</strong> {submittedAtText} น.</div>
+              {submittedCase.receiptNumber && <div><strong className="text-[#718096]">เลขรับเรื่องร้องเรียน:</strong> {submittedCase.receiptNumber}</div>}
               <div><strong className="text-[#718096]">สถานที่ยื่น:</strong> {filingPlace} จ.{submittedCase.province}</div>
               <div><strong className="text-[#718096]">พื้นที่:</strong> จ.{submittedCase.province} {submittedCase.constituency} ({submittedCase.district})</div>
               <div><strong className="text-[#718096]">ข้อกล่าวหา:</strong> {submittedCase.allegation}</div>
@@ -241,6 +247,28 @@ export default function NewComplaintForm({ onClose, onAddCase, mode = "officer",
                   <input type="date" required value={announcementDate} onChange={(event) => setAnnouncementDate(event.target.value)} className="w-full rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-xs outline-none focus:border-blue-500" />
                 </div>
               </div>
+              {mode === "officer" && (
+                <div className="grid gap-3 text-xs sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block font-medium text-[#4A5568]">วันที่ยื่นเรื่องร้องเรียน <RequiredMark /></label>
+                    <input type="date" required value={filedDate} onChange={(event) => setFiledDate(event.target.value)} className="w-full rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-xs outline-none focus:border-blue-500" />
+                    <span className="mt-1 block text-[9px] text-slate-400">วันที่ผู้ร้องยื่นคำร้องกระดาษจริง (อาจไม่ตรงกับวันที่คีย์ข้อมูล)</span>
+                  </div>
+                  <div>
+                    <label className="mb-1 block font-medium text-[#4A5568]">เลขรับเรื่องร้องเรียน <RequiredMark /></label>
+                    <input
+                      type="text"
+                      required
+                      value={receiptNumber}
+                      onChange={(event) => setReceiptNumber(event.target.value)}
+                      placeholder="เช่น รับที่ 045/2569"
+                      className="w-full rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-xs outline-none focus:border-blue-500"
+                    />
+                    <span className="mt-1 block text-[9px] text-slate-400">เลขที่ประทับตราบนใบรับคำร้องกระดาษ (สตว.1)</span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-[10px] leading-5 text-blue-800">
                 <CalendarDays className="mt-0.5 h-4 w-4 shrink-0" /> ยื่นได้ตั้งแต่ประกาศกำหนดวันเลือกตั้งจนถึง 30 วันนับแต่ประกาศผล เว้นแต่คำร้องเกี่ยวกับการนับคะแนนซึ่งต้องยื่นระหว่างการนับคะแนนยังไม่แล้วเสร็จ
               </div>

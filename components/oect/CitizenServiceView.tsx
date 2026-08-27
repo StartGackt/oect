@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   CalendarDays,
@@ -18,10 +18,12 @@ import {
   UploadCloud,
   UserRound,
 } from "lucide-react";
-import { CURRENT_CITIZEN, WORKFLOW_STEPS, formatThaiDate, getPublicStatus, getSlaLabel, type ComplaintItem } from "@/components/oect/complaintDomain";
+import { WORKFLOW_STEPS, formatThaiDate, getPublicStatus, getSlaLabel, type CitizenAccount, type ComplaintItem } from "@/components/oect/complaintDomain";
+import { useAuditLogStore } from "@/components/oect/rbacDomain";
 
 interface CitizenServiceViewProps {
   cases: ComplaintItem[];
+  currentCitizen: CitizenAccount;
   activeTab: CitizenTab;
   onTabChange: (tab: CitizenTab) => void;
   onOpenNewComplaint: () => void;
@@ -41,11 +43,13 @@ const TAB_META: Record<CitizenTab, { title: string; description: string }> = {
   profile: { title: "ข้อมูลส่วนตัว", description: "ตรวจสอบข้อมูลบัญชีและช่องทางการแจ้งเตือน" },
 };
 
-export default function CitizenServiceView({ cases, activeTab, onTabChange, onOpenNewComplaint, onSelectCase, onUpdateCase }: CitizenServiceViewProps) {
+export default function CitizenServiceView({ cases, currentCitizen, activeTab, onTabChange, onOpenNewComplaint, onSelectCase, onUpdateCase }: CitizenServiceViewProps) {
   const [search, setSearch] = useState("");
-  const [uploaded, setUploaded] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [editedDetails, setEditedDetails] = useState("");
   const [correctionSubmittedSuccess, setCorrectionSubmittedSuccess] = useState(false);
-  const myCases = useMemo(() => cases.filter((item) => item.complainants.includes(CURRENT_CITIZEN.name)), [cases]);
+  const [, appendAuditLog] = useAuditLogStore();
+  const myCases = useMemo(() => cases.filter((item) => item.complainants.includes(currentCitizen.name)), [cases, currentCitizen]);
   const currentCase = myCases.find((item) => item.slaStatus !== "COMPLETED") ?? myCases[0];
   const correctionCase = myCases.find((item) => item.correctionRequested) ?? myCases.find((item) => item.slaStatus === "OVERDUE" || item.slaStatus === "NEAR_DUE");
   const completedCase = myCases.find((item) => item.slaStatus === "COMPLETED");
@@ -53,17 +57,39 @@ export default function CitizenServiceView({ cases, activeTab, onTabChange, onOp
   const completedCount = myCases.filter((item) => item.slaStatus === "COMPLETED").length;
   const pageMeta = TAB_META[activeTab];
 
+  useEffect(() => {
+    setEditedDetails(correctionCase?.details ?? "");
+    setUploadedFileName(null);
+    setCorrectionSubmittedSuccess(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [correctionCase?.id]);
+
   const handleSendCorrection = () => {
     if (!correctionCase) return;
+    const finalDoc = uploadedFileName ?? "evidence_additional_docs.pdf";
     const updated: ComplaintItem = {
       ...correctionCase,
+      details: editedDetails.trim() || correctionCase.details,
       correctionSubmitted: true,
       correctionSubmittedDate: new Date().toLocaleDateString("th-TH"),
-      correctionDoc: "evidence_additional_docs.pdf",
+      correctionDoc: finalDoc,
     };
     if (onUpdateCase) {
       onUpdateCase(updated);
     }
+    appendAuditLog({
+      userId: currentCitizen.id,
+      userName: currentCitizen.name,
+      userRole: "citizen",
+      userRoleLabel: "ผู้ร้องเรียน",
+      action: "CASE_CORRECTION_SUBMITTED",
+      actionLabel: "ส่งข้อมูล/เอกสารเพิ่มเติมตามข้อ 26(2)",
+      caseNumber: correctionCase.caseNumber,
+      province: correctionCase.province,
+      ipAddress: "-",
+      status: "SUCCESS",
+      details: `ผู้ร้องแก้ไข/เพิ่มเติมรายละเอียดพฤติการณ์ และแนบเอกสาร ${finalDoc}`,
+    });
     setCorrectionSubmittedSuccess(true);
   };
 
@@ -131,17 +157,45 @@ export default function CitizenServiceView({ cases, activeTab, onTabChange, onOp
         correctionCase ? <section className="grid gap-5 lg:grid-cols-[1fr_340px]">
           <div className="rounded-2xl border border-amber-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-800">แจ้งตามข้อ 26(2)</span><h2 className="mt-3 text-lg font-bold text-slate-950">รายการที่ต้องแก้ไข/เพิ่มเติม</h2><p className="mt-1 text-xs text-slate-500">คำร้อง {correctionCase.caseNumber}</p></div><div className="rounded-xl bg-rose-50 px-4 py-3 text-center text-rose-700 ring-1 ring-rose-200"><div className="text-lg font-bold">{getSlaLabel(correctionCase)}</div><div className="text-[9px] font-bold uppercase">กรอบเวลาปัจจุบัน</div></div></div>
-            <div className="mt-6 space-y-3"><CorrectionItem done title="สำเนาบัตรประชาชน" detail="ตรวจสอบผ่าน DXC แล้ว" /><CorrectionItem title="หลักฐานการอยู่อาศัยในเขตเลือกตั้ง" detail="กรุณาแนบเอกสารที่ออกไม่เกิน 90 วัน" /><CorrectionItem title="บันทึกถ้อยคำเพิ่มเติม" detail="ระบุแหล่งที่มาของไฟล์วิดีโอหลักฐาน" /></div>
+            <div className="mt-6 space-y-3">
+              <CorrectionItem done title="สำเนาบัตรประชาชน" detail="ตรวจสอบผ่าน DXC แล้ว" />
+
+              <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${uploadedFileName ? "bg-emerald-600 text-white" : "bg-white text-amber-700 ring-1 ring-amber-300"}`}>{uploadedFileName ? <Check className="h-4 w-4" /> : <Paperclip className="h-3.5 w-3.5" />}</span>
+                <label className="flex-1">
+                  <span className="block text-xs font-bold text-slate-900">หลักฐานการอยู่อาศัยในเขตเลือกตั้ง</span>
+                  <span className="mt-1 block text-[10px] leading-5 text-slate-600">{uploadedFileName ?? "กรุณาแนบเอกสารที่ออกไม่เกิน 90 วัน (PDF/JPG)"}</span>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="mt-2 block w-full text-[10px] text-slate-500"
+                    onChange={(event) => setUploadedFileName(event.target.files?.[0]?.name ?? null)}
+                  />
+                </label>
+              </div>
+
+              <div className="rounded-xl border border-amber-200 bg-white p-3">
+                <label className="mb-1.5 block text-xs font-bold text-slate-900" htmlFor="correction-details">แก้ไข/เพิ่มเติมรายละเอียดพฤติการณ์</label>
+                <textarea
+                  id="correction-details"
+                  rows={4}
+                  value={editedDetails}
+                  onChange={(event) => setEditedDetails(event.target.value)}
+                  placeholder="ระบุแหล่งที่มาของไฟล์วิดีโอหลักฐาน หรือข้อเท็จจริงเพิ่มเติม..."
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
             {correctionSubmittedSuccess ? (
               <div className="mt-5 rounded-xl bg-emerald-100 p-4 text-xs font-bold text-emerald-800 flex items-center gap-2">
-                <Check className="h-4 w-4" /> ส่งเอกสารเพิ่มเติมให้ สนง.กกต.จว. เรียบร้อยแล้ว เจ้าหน้าที่จะทำการตรวจสอบในขั้นตอนถัดไป
+                <Check className="h-4 w-4" /> ส่งข้อมูลและเอกสารเพิ่มเติมให้ สนง.กกต.จว. เรียบร้อยแล้ว เจ้าหน้าที่จะทำการตรวจสอบในขั้นตอนถัดไป
               </div>
             ) : (
               <div className="mt-5 flex justify-end">
                 <button
                   type="button"
                   onClick={handleSendCorrection}
-                  disabled={!uploaded}
+                  disabled={!uploadedFileName}
                   className="btn-primary disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <UploadCloud className="h-4 w-4" /> ส่งข้อมูลเพิ่มเติม
@@ -169,8 +223,8 @@ export default function CitizenServiceView({ cases, activeTab, onTabChange, onOp
 
       {activeTab === "profile" && (
         <section className="grid gap-5 lg:grid-cols-[1fr_340px]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="flex items-center gap-2 text-sm font-bold text-slate-950"><UserRound className="h-5 w-5 text-blue-700" /> ข้อมูลส่วนตัวและสิทธิ์การยื่น</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><ProfileField label="ชื่อ-นามสกุล" value={CURRENT_CITIZEN.name} /><ProfileField label="เลขประจำตัวประชาชน" value={CURRENT_CITIZEN.citizenIdMasked} /><ProfileField label="สถานะผู้ใช้" value="ผู้มีสิทธิเลือกตั้งในเขต" /><ProfileField label="เขตเลือกตั้ง" value={`${CURRENT_CITIZEN.province} ${CURRENT_CITIZEN.constituency}`} /><ProfileField label="เบอร์โทรศัพท์" value={CURRENT_CITIZEN.phoneMasked} /><ProfileField label="อีเมล" value={CURRENT_CITIZEN.emailMasked} /></div></div>
-          <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 className="flex items-center gap-2 text-xs font-bold text-slate-900"><Settings2 className="h-4 w-4 text-blue-700" /> ช่องทางแจ้งเตือน</h3><div className="mt-4 space-y-3"><Toggle label="แจ้งเตือนผ่านแอป" enabled /><Toggle label="อีเมล" enabled /><Toggle label="SMS" enabled={false} /></div><div className="mt-5 rounded-xl bg-blue-50 p-3 text-[10px] leading-5 text-blue-800">ข้อมูลอ้างอิงตัวตนมาจาก ThaID/DXC หากต้องการแก้ไขข้อมูลหลัก กรุณาติดต่อหน่วยงานต้นทาง</div></aside>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="flex items-center gap-2 text-sm font-bold text-slate-950"><UserRound className="h-5 w-5 text-blue-700" /> ข้อมูลส่วนตัวและสิทธิ์การยื่น</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><ProfileField label="ชื่อ-นามสกุล" value={currentCitizen.name} /><ProfileField label="เลขประจำตัวประชาชน" value={currentCitizen.citizenIdMasked} /><ProfileField label="สถานะผู้ใช้" value="ผู้มีสิทธิเลือกตั้งในเขต" /><ProfileField label="เขตเลือกตั้ง" value={`${currentCitizen.province} ${currentCitizen.constituency}`} /><ProfileField label="เบอร์โทรศัพท์" value={currentCitizen.phoneMasked} /><ProfileField label="อีเมล" value={currentCitizen.emailMasked} /></div></div>
+          <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 className="flex items-center gap-2 text-xs font-bold text-slate-900"><Settings2 className="h-4 w-4 text-blue-700" /> ช่องทางแจ้งเตือน</h3><div className="mt-4 space-y-3"><Toggle label="แจ้งเตือนผ่านแอป" enabled /><Toggle label="อีเมล" enabled /><Toggle label="SMS" enabled={false} /></div><div className="mt-5 rounded-xl bg-blue-50 p-3 text-[10px] leading-5 text-blue-800">ยืนยันตัวตนผ่าน {currentCitizen.verifiedVia} หากต้องการแก้ไขข้อมูลหลัก กรุณาติดต่อหน่วยงานต้นทาง</div></aside>
         </section>
       )}
     </div>

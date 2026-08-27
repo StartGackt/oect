@@ -206,6 +206,7 @@ export default function AdminConsolePage() {
       return;
     }
     setActiveView(view);
+    setIsNewComplaintOpen(false);
     setIsMobileMenuOpen(false);
   };
 
@@ -431,11 +432,18 @@ export default function AdminConsolePage() {
           <div className="mb-3 flex items-center gap-2 text-[10px] text-slate-400">
             <span>ศูนย์ผู้ดูแลระบบ</span>
             <ChevronRight className="h-3.5 w-3.5" />
-            <span className="font-semibold text-[#1B3F8B]">{meta.title}</span>
+            <span className="font-semibold text-[#1B3F8B]">{isNewComplaintOpen ? "บันทึกเรื่องร้องเรียนใหม่" : meta.title}</span>
           </div>
 
-          {/* If the current persona doesn't have access to this tab, show Permission Denied Guard */}
-          {!hasAccessToCurrentView ? (
+          {/* บันทึกเรื่องใหม่แบบเต็มหน้าจอ เหมือนกับฝั่งประชาชน (ไม่ใช่ modal ลอย) */}
+          {isNewComplaintOpen ? (
+            <NewComplaintForm
+              mode="officer"
+              presentation="page"
+              onClose={() => setIsNewComplaintOpen(false)}
+              onAddCase={(newCase) => setCases((currentCases) => [newCase, ...currentCases])}
+            />
+          ) : !hasAccessToCurrentView ? (
             <div className="rounded-3xl border border-rose-200 bg-white p-8 text-center shadow-sm space-y-4 max-w-xl mx-auto my-12">
               <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-rose-50 text-rose-600">
                 <Lock className="h-7 w-7" />
@@ -570,13 +578,6 @@ export default function AdminConsolePage() {
           onUpdateCase={(updated) =>
             setCases((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
           }
-        />
-      )}
-      {isNewComplaintOpen && (
-        <NewComplaintForm
-          mode="officer"
-          onClose={() => setIsNewComplaintOpen(false)}
-          onAddCase={(newCase) => setCases((currentCases) => [newCase, ...currentCases])}
         />
       )}
     </div>

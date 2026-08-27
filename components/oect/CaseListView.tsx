@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Eye, FileSpreadsheet, Plus, Search } from "lucide-react";
-import { ELECTION_TYPE_OPTIONS, MISSION_GROUP_OPTIONS, formatThaiDate, getCaseKind, getSlaLabel, type ComplaintItem } from "@/components/oect/complaintDomain";
+import { MISSION_GROUP_OPTIONS, formatThaiDate, getCaseKind, getSlaLabel, getStatusLabel, getWorkflowStep, type ComplaintItem } from "@/components/oect/complaintDomain";
+import ElectionTypeCardMenu from "@/components/oect/ElectionTypeCardMenu";
 
 interface CaseListViewProps {
   cases: ComplaintItem[];
@@ -120,11 +121,7 @@ export default function CaseListView({
             ))}
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-3">
-            <select value={selectedElectionType} onChange={(event) => { setSelectedElectionType(event.target.value); setCurrentPage(1); }} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs outline-none">
-              <option value="ALL">ประเภทการเลือกตั้งทั้งหมด</option>
-              {ELECTION_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
+          <div className="grid gap-2 sm:grid-cols-2">
             <select value={selectedProvince} onChange={(event) => { setSelectedProvince(event.target.value); setCurrentPage(1); }} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs outline-none">
               <option value="ALL">ทุกจังหวัด</option>
               {provinceList.map((province) => <option key={province} value={province}>{province}</option>)}
@@ -134,6 +131,10 @@ export default function CaseListView({
               {MISSION_GROUP_OPTIONS.map((mission) => <option key={mission} value={mission}>{mission}</option>)}
             </select>
           </div>
+        </div>
+
+        <div className="border-t border-slate-100 pt-3">
+          <ElectionTypeCardMenu cases={cases} value={selectedElectionType} onChange={(value) => { setSelectedElectionType(value); setCurrentPage(1); }} />
         </div>
       </section>
 
@@ -158,31 +159,45 @@ export default function CaseListView({
         </div>
 
         <div className="hidden overflow-x-auto md:block">
-          <table className="w-full min-w-[1180px] text-left text-xs">
+          <table className="w-full min-w-[1720px] text-left text-xs">
             <thead className="sticky top-0 bg-slate-50 text-[10px] font-bold text-slate-600">
               <tr>
-                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">เลขที่เรื่อง / ประเภท</th>
-                <th className="border-b border-slate-200 px-4 py-3.5">ผู้ร้อง</th>
-                <th className="border-b border-slate-200 px-4 py-3.5">ข้อกล่าวหา</th>
-                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">พื้นที่</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-3 py-3.5">ลำดับ</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">เลขที่เรื่องร้องเรียน</th>
                 <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">วันที่รับเรื่อง</th>
-                <th className="border-b border-slate-200 px-4 py-3.5">ขั้นตอน / SLA</th>
-                <th className="border-b border-slate-200 px-4 py-3.5">ผู้รับผิดชอบ</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">ประเภทการเลือกตั้ง</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">เขตเลือกตั้ง</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">อำเภอ</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">จังหวัด</th>
+                <th className="border-b border-slate-200 px-4 py-3.5">ชื่อผู้ร้อง</th>
+                <th className="border-b border-slate-200 px-4 py-3.5">ชื่อผู้ถูกร้อง</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">สถานะปัจจุบัน</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">สถานะ Timeline ล่าสุด</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">ระยะเวลาดำเนินงาน Timeline ล่าสุด</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">เหลืออีกกี่วัน</th>
+                <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">ผู้รับผิดชอบ</th>
                 <th className="border-b border-slate-200 px-4 py-3.5 text-center">จัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {paginatedCases.length === 0 ? (
-                <tr><td colSpan={8} className="py-14 text-center text-slate-400">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</td></tr>
-              ) : paginatedCases.map((caseItem) => (
+                <tr><td colSpan={15} className="py-14 text-center text-slate-400">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการค้นหา</td></tr>
+              ) : paginatedCases.map((caseItem, index) => (
                 <tr key={caseItem.id} onClick={() => onSelectCase(caseItem)} className="cursor-pointer align-top transition hover:bg-blue-50/40">
-                  <td className="px-4 py-4"><div className="font-bold text-[#1B3F8B]">{caseItem.caseNumber}</div><div className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-500"><span className="rounded bg-slate-100 px-1.5 py-0.5 font-semibold">{getCaseKind(caseItem)}</span><span>{caseItem.electionType}</span></div></td>
-                  <td className="max-w-52 px-4 py-4"><div className="line-clamp-2 leading-5 text-slate-700">{caseItem.complainants}</div><div className="mt-1 text-[9px] text-slate-400">ผู้ถูกร้อง: {caseItem.respondent}</div></td>
-                  <td className="max-w-48 px-4 py-4"><div className="font-semibold leading-5 text-slate-800">{caseItem.allegation}</div><div className="mt-1 text-[9px] text-slate-400">{caseItem.missionGroup}</div></td>
-                  <td className="whitespace-nowrap px-4 py-4"><div className="font-medium text-slate-800">{caseItem.province}</div><div className="mt-1 text-[10px] text-slate-400">{caseItem.district} · {caseItem.constituency}</div></td>
+                  <td className="px-3 py-4 text-slate-400">{pageStart + index + 1}</td>
+                  <td className="px-4 py-4"><div className="font-bold text-[#1B3F8B]">{caseItem.caseNumber}</div><div className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-500"><span className="rounded bg-slate-100 px-1.5 py-0.5 font-semibold">{getCaseKind(caseItem)}</span></div></td>
                   <td className="whitespace-nowrap px-4 py-4 text-slate-600">{formatThaiDate(caseItem.receivedDate)}</td>
-                  <td className="max-w-56 px-4 py-4"><div className="font-medium leading-5 text-slate-800">{caseItem.currentStage}</div><SlaBadge caseItem={caseItem} /></td>
-                  <td className="max-w-44 px-4 py-4"><div className="text-slate-700">{caseItem.officer}</div><div className="mt-1 text-[9px] text-slate-400">{caseItem.currentSection}</div></td>
+                  <td className="whitespace-nowrap px-4 py-4 text-slate-700">{caseItem.electionType}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-slate-700">{caseItem.constituency}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-slate-700">{caseItem.district}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-slate-700">{caseItem.province}</td>
+                  <td className="max-w-44 px-4 py-4"><div className="line-clamp-2 leading-5 text-slate-700">{caseItem.complainants}</div></td>
+                  <td className="max-w-44 px-4 py-4"><div className="line-clamp-2 leading-5 text-slate-700">{caseItem.respondent}</div></td>
+                  <td className="whitespace-nowrap px-4 py-4"><StatusBadge caseItem={caseItem} /></td>
+                  <td className="max-w-56 px-4 py-4 text-slate-700">{caseItem.currentStage}</td>
+                  <td className="whitespace-nowrap px-4 py-4 text-slate-500">{getWorkflowStep(caseItem.stageId).slaLabel}</td>
+                  <td className="whitespace-nowrap px-4 py-4 font-semibold text-slate-800">{getSlaLabel(caseItem)}</td>
+                  <td className="max-w-40 px-4 py-4"><div className="text-slate-700">{caseItem.officer}</div><div className="mt-1 text-[9px] text-slate-400">{caseItem.currentSection}</div></td>
                   <td className="px-4 py-4 text-center"><button type="button" onClick={(event) => { event.stopPropagation(); onSelectCase(caseItem); }} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-[#1B3F8B] transition hover:border-[#1B3F8B] hover:bg-blue-50" aria-label={`เปิดเรื่อง ${caseItem.caseNumber}`}><Eye className="h-4 w-4" /></button></td>
                 </tr>
               ))}
@@ -209,4 +224,16 @@ function SlaBadge({ caseItem }: { caseItem: ComplaintItem }) {
         : { className: "bg-emerald-100 text-emerald-800" };
 
   return <span className={`mt-2 inline-flex rounded-full px-2 py-1 text-[9px] font-bold ${config.className}`}>{getSlaLabel(caseItem)}</span>;
+}
+
+function StatusBadge({ caseItem }: { caseItem: ComplaintItem }) {
+  const config = caseItem.slaStatus === "OVERDUE"
+    ? { className: "bg-rose-100 text-rose-700" }
+    : caseItem.slaStatus === "NEAR_DUE"
+      ? { className: "bg-amber-100 text-amber-800" }
+      : caseItem.slaStatus === "COMPLETED"
+        ? { className: "bg-slate-100 text-slate-700" }
+        : { className: "bg-emerald-100 text-emerald-800" };
+
+  return <span className={`inline-flex rounded-full px-2 py-1 text-[9px] font-bold ${config.className}`}>{getStatusLabel(caseItem.slaStatus)}</span>;
 }

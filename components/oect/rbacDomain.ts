@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { MOCK_CITIZENS, getCitizenById, type CitizenAccount } from "@/components/oect/complaintDomain";
 
 // ==========================================
 // 1. ROLE DEFINITIONS (UNIFIED 9 ROLES + ADMIN + CITIZEN)
@@ -507,6 +508,9 @@ export type AuditActionType =
   | "CASE_VIEW"
   | "CASE_INTAKE"
   | "CASE_CORRECTION_REQUESTED"
+  | "CASE_CORRECTION_SUBMITTED"
+  | "CASE_DATA_CORRECTED"
+  | "CASE_STEP_NOTE_ADDED"
   | "CASE_DIRECTOR_ORDER"
   | "CASE_ASSIGN_OFFICER"
   | "CASE_EXTENSION_REQUESTED"
@@ -915,6 +919,37 @@ export function useSecurityPolicyStore() {
   };
 
   return [policy, savePolicy] as const;
+}
+
+const CITIZEN_SESSION_KEY = "oect-citizen-session-v1";
+
+// ผูก "ประชาชนกรอกเอง" กับบัญชี ThaID จำลองที่เลือกไว้ตอน Login แทนคนเดียวคงที่ (CURRENT_CITIZEN)
+export function useCitizenSessionStore() {
+  const [citizenId, setCitizenIdState] = useState<string>(MOCK_CITIZENS[0].id);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(CITIZEN_SESSION_KEY);
+      if (stored && MOCK_CITIZENS.some((item) => item.id === stored)) {
+        setCitizenIdState(stored);
+      }
+    } catch {
+      // fallback
+    }
+  }, []);
+
+  const setCitizenId = (id: string) => {
+    if (!MOCK_CITIZENS.some((item) => item.id === id)) return;
+    setCitizenIdState(id);
+    try {
+      localStorage.setItem(CITIZEN_SESSION_KEY, id);
+    } catch {
+      // ignore
+    }
+  };
+
+  const currentCitizen: CitizenAccount = getCitizenById(citizenId);
+  return [currentCitizen, setCitizenId] as const;
 }
 
 export function useRolePermissionsStore() {

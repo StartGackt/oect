@@ -19,6 +19,7 @@ import {
   Smartphone,
   UserRound,
 } from "lucide-react";
+import { MOCK_CITIZENS } from "@/components/oect/complaintDomain";
 
 type Gateway = "user" | "admin";
 type LoginMethod = "password" | "thaid";
@@ -33,19 +34,20 @@ export default function LoginPage() {
   const [otp, setOtp] = useState("291846");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedCitizenId, setSelectedCitizenId] = useState(MOCK_CITIZENS[0].id);
 
   const handleLogin = (event: React.FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
     window.setTimeout(() => {
-      router.push(selectedGateway === "user" ? "/user?view=citizen" : "/admin");
+      router.push(selectedGateway === "user" ? `/user?view=citizen&citizenId=${selectedCitizenId}` : "/admin");
     }, 550);
   };
 
   const handleDemoLogin = (destination: "citizen" | "admin") => {
     setIsLoading(true);
     window.setTimeout(() => {
-      router.push(destination === "citizen" ? "/user?view=citizen" : "/admin");
+      router.push(destination === "citizen" ? `/user?view=citizen&citizenId=${selectedCitizenId}` : "/admin");
     }, 350);
   };
 
@@ -103,6 +105,20 @@ export default function LoginPage() {
 
             {selectedGateway === "user" ? (
               <div className="mt-6">
+                <div className="mb-5">
+                  <label htmlFor="mock-citizen" className="mb-1.5 block text-[11px] font-medium text-slate-700">บัญชีประชาชนสำหรับทดสอบ (จำลองข้อมูล ThaID)</label>
+                  <select
+                    id="mock-citizen"
+                    value={selectedCitizenId}
+                    onChange={(event) => setSelectedCitizenId(event.target.value)}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs outline-none transition focus:border-[#4FB3E8] focus:bg-white focus:ring-4 focus:ring-[#4FB3E8]/20"
+                  >
+                    {MOCK_CITIZENS.map((citizen) => (
+                      <option key={citizen.id} value={citizen.id}>{citizen.name} · จ.{citizen.province}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="mb-5 flex gap-6 border-b border-slate-200" role="tablist" aria-label="วิธียืนยันตัวตน">
                   <MethodTab active={loginMethod === "password"} onClick={() => setLoginMethod("password")} icon={<KeyRound className="h-3.5 w-3.5" />} label="บัญชีผู้ใช้ + OTP" />
                   <MethodTab active={loginMethod === "thaid"} onClick={() => setLoginMethod("thaid")} icon={<Fingerprint className="h-3.5 w-3.5" />} label="ยืนยันผ่าน ThaID" />

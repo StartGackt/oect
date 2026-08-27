@@ -36,9 +36,9 @@ import NewComplaintForm from "@/components/oect/NewComplaintForm";
 import RoleWorkspaceView, { OFFICER_ROLES } from "@/components/oect/RoleWorkspaceView";
 import SlaMonitoringView from "@/components/oect/SlaMonitoringView";
 import WorkflowVisualizer from "@/components/oect/WorkflowVisualizer";
-import { CURRENT_CITIZEN, type ComplaintItem } from "@/components/oect/complaintDomain";
+import { MOCK_CITIZENS, type ComplaintItem } from "@/components/oect/complaintDomain";
 import { useComplaintsStore } from "@/components/oect/useComplaintsStore";
-import { type SystemRoleId } from "@/components/oect/rbacDomain";
+import { useCitizenSessionStore, type SystemRoleId } from "@/components/oect/rbacDomain";
 
 type PortalView = "dashboard" | "workspace" | "cases" | "workflow" | "sla" | "citizen" | "governance" | "integrations";
 
@@ -216,6 +216,7 @@ export default function UserPortalPage() {
   const [selectedRoleId, setSelectedRoleId] = useState<string>("intake");
   const [caseStatusFilter, setCaseStatusFilter] = useState<string>("ALL");
   const [isCitizenPortal, setIsCitizenPortal] = useState(true);
+  const [currentCitizen, setCitizenId] = useCitizenSessionStore();
 
   const currentMeta = PAGE_META[activeView];
   const selectedRole = OFFICER_ROLES.find((role) => role.id === selectedRoleId) ?? OFFICER_ROLES[0];
@@ -223,7 +224,7 @@ export default function UserPortalPage() {
     () => cases.filter((item) => item.slaStatus === "OVERDUE" || item.slaStatus === "NEAR_DUE").length,
     [cases],
   );
-  const citizenCases = useMemo(() => cases.filter((item) => item.complainants.includes(CURRENT_CITIZEN.name)), [cases]);
+  const citizenCases = useMemo(() => cases.filter((item) => item.complainants.includes(currentCitizen.name)), [cases, currentCitizen]);
   const citizenActionCount = citizenCases.filter((item) => item.slaStatus === "NEAR_DUE" || item.slaStatus === "OVERDUE").length;
   const notificationCount = isCitizenPortal ? citizenActionCount : urgentCount;
 
@@ -232,11 +233,15 @@ export default function UserPortalPage() {
       const parameters = new URLSearchParams(window.location.search);
       const requestedView = parameters.get("view");
       const requestedRole = parameters.get("role");
+      const requestedCitizenId = parameters.get("citizenId");
       if (requestedView === "citizen") {
         setIsCitizenPortal(true);
         setActiveView("citizen");
         setCitizenTab("overview");
         setIsCitizenFormOpen(false);
+      }
+      if (requestedCitizenId && MOCK_CITIZENS.some((citizen) => citizen.id === requestedCitizenId)) {
+        setCitizenId(requestedCitizenId);
       }
       if (requestedRole && OFFICER_ROLES.some((role) => role.id === requestedRole)) {
         setIsCitizenPortal(false);
@@ -245,11 +250,13 @@ export default function UserPortalPage() {
       }
     }, 0);
     return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectView = (view: PortalView) => {
     setActiveView(view);
     if (view === "citizen") setIsCitizenFormOpen(false);
+    setIsNewModalOpen(false);
     setIsMobileMenuOpen(false);
   };
 
@@ -293,7 +300,7 @@ export default function UserPortalPage() {
               <Menu className="h-5 w-5" />
             </button>
 
-            <Link href={isCitizenPortal ? "/user?view=citizen" : `/user?role=${selectedRoleId}`} className="flex min-w-0 items-center gap-3">
+            <Link href={isCitizenPortal ? `/user?view=citizen&citizenId=${currentCitizen.id}` : `/user?role=${selectedRoleId}`} className="flex min-w-0 items-center gap-3">
               <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-amber-300 bg-white p-1 shadow-sm">
                 <Image
                   src="/oect-logo.png"
@@ -351,10 +358,10 @@ export default function UserPortalPage() {
             </button>
 
             <div className="hidden items-center gap-2 border-l border-slate-200 pl-3 sm:flex">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1B3F8B] text-xs font-bold text-white">{isCitizenPortal ? CURRENT_CITIZEN.initials : "WK"}</span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1B3F8B] text-xs font-bold text-white">{isCitizenPortal ? currentCitizen.initials : "WK"}</span>
                 <span className="hidden xl:block">
-                  <span className="block text-xs font-semibold text-slate-900">{isCitizenPortal ? CURRENT_CITIZEN.shortName : "วรากร กรณีศึกษา"}</span>
-                  <span className="block max-w-44 truncate text-[10px] text-slate-500">{isCitizenPortal ? "ผู้ร้องเรียน · ยืนยัน ThaID แล้ว" : `${selectedRole.label} · เชียงใหม่`}</span>
+                  <span className="block text-xs font-semibold text-slate-900">{isCitizenPortal ? currentCitizen.shortName : "วรากร กรณีศึกษา"}</span>
+                  <span className="block max-w-44 truncate text-[10px] text-slate-500">{isCitizenPortal ? `ผู้ร้องเรียน · ยืนยันด้วย ${currentCitizen.verifiedVia}` : `${selectedRole.label} · เชียงใหม่`}</span>
                 </span>
             </div>
 
@@ -421,8 +428,20 @@ export default function UserPortalPage() {
           <div className="mt-auto space-y-3 pt-6">
             {isCitizenPortal ? (
               <div className="border-t border-slate-100 px-3 pt-4">
-                <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-500"><ShieldCheck className="h-3.5 w-3.5 text-[#1B3F8B]" /> ยืนยันตัวตนด้วย ThaID แล้ว</div>
-                <div className="mt-1.5 text-[10px] text-slate-400">ช่วยเหลือสายด่วน กกต. 1444</div>
+                <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-500"><ShieldCheck className="h-3.5 w-3.5 text-[#1B3F8B]" /> ยืนยันตัวตนด้วย {currentCitizen.verifiedVia} แล้ว</div>
+                <label className="mt-2.5 block">
+                  <span className="sr-only">สลับบัญชีประชาชนสำหรับทดสอบ</span>
+                  <select
+                    value={currentCitizen.id}
+                    onChange={(event) => setCitizenId(event.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10px] font-medium text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white"
+                  >
+                    {MOCK_CITIZENS.map((citizen) => (
+                      <option key={citizen.id} value={citizen.id}>{citizen.name} · จ.{citizen.province}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="mt-2 text-[10px] text-slate-400">ช่วยเหลือสายด่วน กกต. 1444</div>
               </div>
             ) : (
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3.5">
@@ -439,7 +458,19 @@ export default function UserPortalPage() {
         </aside>
 
         <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
-          {!isCitizenPortal && <><div className="mb-3 flex items-center gap-2 text-[10px] text-slate-400"><span>ระบบงานเจ้าหน้าที่</span><ChevronRight className="h-3.5 w-3.5" /><span className="font-semibold text-[#1B3F8B]">{currentMeta.title}</span></div><section className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          {!isCitizenPortal && isNewModalOpen && (
+            <div className="mb-3 flex items-center gap-2 text-[10px] text-slate-400"><span>ระบบงานเจ้าหน้าที่</span><ChevronRight className="h-3.5 w-3.5" /><span className="font-semibold text-[#1B3F8B]">บันทึกรับคำร้องใหม่</span></div>
+          )}
+          {!isCitizenPortal && isNewModalOpen && (
+            <NewComplaintForm
+              mode="officer"
+              presentation="page"
+              onClose={() => setIsNewModalOpen(false)}
+              onAddCase={(newCase) => setCases((currentCases) => [newCase, ...currentCases])}
+            />
+          )}
+
+          {!isCitizenPortal && !isNewModalOpen && <><div className="mb-3 flex items-center gap-2 text-[10px] text-slate-400"><span>ระบบงานเจ้าหน้าที่</span><ChevronRight className="h-3.5 w-3.5" /><span className="font-semibold text-[#1B3F8B]">{currentMeta.title}</span></div><section className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="px-5 py-5 sm:px-6">
               <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                 <div className="max-w-3xl">
@@ -501,7 +532,7 @@ export default function UserPortalPage() {
             </div>
           </section></>}
 
-          {activeView === "dashboard" && (
+          {!isNewModalOpen && activeView === "dashboard" && (
             <DashboardView
               cases={cases}
               onSelectCase={(caseItem) => openCase(caseItem)}
@@ -517,7 +548,7 @@ export default function UserPortalPage() {
             />
           )}
 
-          {activeView === "workspace" && (
+          {!isNewModalOpen && activeView === "workspace" && (
             <RoleWorkspaceView
               cases={cases}
               roleId={selectedRoleId}
@@ -527,7 +558,7 @@ export default function UserPortalPage() {
             />
           )}
 
-          {activeView === "cases" && (
+          {!isNewModalOpen && activeView === "cases" && (
             <CaseListView
               cases={cases}
               onSelectCase={(caseItem) => openCase(caseItem)}
@@ -539,20 +570,22 @@ export default function UserPortalPage() {
             />
           )}
 
-          {activeView === "workflow" && <WorkflowVisualizer />}
+          {!isNewModalOpen && activeView === "workflow" && <WorkflowVisualizer />}
 
-          {activeView === "sla" && <SlaMonitoringView cases={cases} onSelectCase={(caseItem) => openCase(caseItem)} />}
+          {!isNewModalOpen && activeView === "sla" && <SlaMonitoringView cases={cases} onSelectCase={(caseItem) => openCase(caseItem)} />}
 
           {activeView === "citizen" && (isCitizenFormOpen ? (
             <NewComplaintForm
               mode="citizen"
               presentation="page"
+              currentCitizen={currentCitizen}
               onClose={() => selectCitizenTab("overview")}
               onAddCase={(newCase) => setCases((currentCases) => [newCase, ...currentCases])}
             />
           ) : (
             <CitizenServiceView
               cases={cases}
+              currentCitizen={currentCitizen}
               activeTab={citizenTab}
               onTabChange={selectCitizenTab}
               onOpenNewComplaint={() => selectCitizenTab("new")}
@@ -613,16 +646,9 @@ export default function UserPortalPage() {
           caseItem={selectedCase}
           readOnly={selectedCaseReadOnly}
           currentUserRole={isCitizenPortal ? "citizen" : (selectedRoleId as SystemRoleId)}
-          currentUserName={isCitizenPortal ? CURRENT_CITIZEN.name : selectedRole.label}
+          currentUserName={isCitizenPortal ? currentCitizen.name : selectedRole.label}
           onClose={() => setSelectedCase(null)}
           onUpdateCase={handleUpdateCase}
-        />
-      )}
-      {isNewModalOpen && !isCitizenPortal && (
-        <NewComplaintForm
-          mode="officer"
-          onClose={() => setIsNewModalOpen(false)}
-          onAddCase={(newCase) => setCases((currentCases) => [newCase, ...currentCases])}
         />
       )}
     </div>

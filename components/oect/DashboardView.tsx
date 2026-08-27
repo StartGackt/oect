@@ -10,11 +10,26 @@ import {
   FileText,
   Filter,
   Inbox,
+  LayoutGrid,
   MapPin,
+  PieChart,
   ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
-import { ELECTION_TYPE_OPTIONS, MISSION_GROUP_OPTIONS, getSlaLabel, type ComplaintItem } from "@/components/oect/complaintDomain";
+import { MISSION_GROUP_OPTIONS, getSlaLabel, type ComplaintItem } from "@/components/oect/complaintDomain";
+import ElectionTypeCardMenu from "@/components/oect/ElectionTypeCardMenu";
+
+// สีตามกลุ่มภารกิจ สำหรับ Pie chart หน้าจอผู้บริหาร กกต./ลธ.กกต. (ภาคผนวก ข ข้อ ๔.๔)
+const MISSION_COLORS: Record<string, string> = {
+  "สืบสวนและไต่สวน": "#1B3F8B",
+  "พรรคการเมือง": "#4FB3E8",
+  "การจัดการเลือกตั้ง": "#FFD600",
+  "บริหารทั่วไป": "#10B981",
+  "กระบวนการยุติธรรม": "#F43F5E",
+};
+
+// เฉพาะบทบาทระดับผู้บริหารส่วนกลาง (กกต./ลธ.กกต.) ที่เห็นสรุปภาพรวมตามภารกิจ ตาม TOR ข้อ ๔.๔
+const EXECUTIVE_ROLE_IDS = ["sequential", "subcommittee", "commission", "secretary", "admin"];
 
 interface DashboardViewProps {
   cases: ComplaintItem[];
@@ -76,6 +91,24 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases, rol
   const maxMonthly = Math.max(...monthlyStats.map(([, count]) => count), 1);
   const maxProvince = Math.max(...provinceStats.map(([, count]) => count), 1);
   const hasFilters = selectedProvince !== "ALL" || selectedMission !== "ALL" || selectedElectionType !== "ALL";
+  const showMissionPie = EXECUTIVE_ROLE_IDS.includes(roleId);
+
+  const missionStats = useMemo(() => {
+    const counts = new Map<string, number>();
+    filteredCases.forEach((item) => counts.set(item.missionGroup, (counts.get(item.missionGroup) ?? 0) + 1));
+    return MISSION_GROUP_OPTIONS.map((mission) => ({ mission, count: counts.get(mission) ?? 0 })).filter((item) => item.count > 0);
+  }, [filteredCases]);
+
+  const missionGradient = useMemo(() => {
+    if (totalCases === 0) return "conic-gradient(#E2E8F0 0% 100%)";
+    let cursor = 0;
+    const segments = missionStats.map((item) => {
+      const start = cursor;
+      cursor += (item.count / totalCases) * 100;
+      return `${MISSION_COLORS[item.mission] ?? "#94A3B8"} ${start}% ${cursor}%`;
+    });
+    return `conic-gradient(${segments.join(", ")})`;
+  }, [missionStats, totalCases]);
 
   const clearFilters = () => {
     setSelectedProvince("ALL");
@@ -86,10 +119,14 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases, rol
   return (
     <div className="space-y-5 pb-12">
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-[#1B3F8B]"><LayoutGrid className="h-4 w-4" /></span><div><div className="text-xs font-semibold text-slate-900">ประเภทการเลือกตั้ง</div><div className="text-[10px] text-slate-400">เลือกการ์ดเพื่อกรองข้อมูลทั้งหน้าตามประเภทการเลือกตั้ง</div></div></div>
+        <ElectionTypeCardMenu cases={cases} value={selectedElectionType} onChange={setSelectedElectionType} />
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-[#1B3F8B]"><Filter className="h-4 w-4" /></span><div><div className="text-xs font-semibold text-slate-900">ตัวกรองภาพรวม</div><div className="text-[10px] text-slate-400">ข้อมูลทุกกราฟจะเปลี่ยนตามตัวกรองเดียวกัน</div></div></div>
-          <div className="grid gap-2 sm:grid-cols-3 xl:flex">
-            <select value={selectedElectionType} onChange={(event) => setSelectedElectionType(event.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs outline-none transition focus:border-blue-500 focus:bg-white"><option value="ALL">ประเภทการเลือกตั้งทั้งหมด</option>{ELECTION_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+          <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-[#1B3F8B]"><Filter className="h-4 w-4" /></span><div><div className="text-xs font-semibold text-slate-900">ตัวกรองเพิ่มเติม</div><div className="text-[10px] text-slate-400">ข้อมูลทุกกราฟจะเปลี่ยนตามตัวกรองเดียวกัน</div></div></div>
+          <div className="grid gap-2 sm:grid-cols-2 xl:flex">
             <select value={selectedMission} onChange={(event) => setSelectedMission(event.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs outline-none transition focus:border-blue-500 focus:bg-white"><option value="ALL">กลุ่มภารกิจทั้งหมด</option>{MISSION_GROUP_OPTIONS.map((mission) => <option key={mission} value={mission}>{mission}</option>)}</select>
             <select value={selectedProvince} onChange={(event) => setSelectedProvince(event.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs outline-none transition focus:border-blue-500 focus:bg-white"><option value="ALL">ทุกจังหวัด</option>{provinceList.map((province) => <option key={province} value={province}>{province}</option>)}</select>
             {hasFilters && <button type="button" onClick={clearFilters} className="rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50">ล้างตัวกรอง</button>}
@@ -124,6 +161,32 @@ export default function DashboardView({ cases, onSelectCase, onViewAllCases, rol
           </div>
         </section>
       </div>
+
+      {showMissionPie && (
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <ChartHeader icon={PieChart} title="สัดส่วนเรื่องร้องเรียนตามภารกิจ" description="ภาพรวมสำหรับผู้บริหาร กกต./ลธ.กกต. แยกตามกลุ่มภารกิจ" badge={`${totalCases} เรื่องตามตัวกรอง`} />
+          <div className="flex flex-col items-center gap-6 px-5 pb-6 sm:flex-row sm:px-6">
+            <div className="relative h-40 w-40 shrink-0 rounded-full" style={{ background: missionGradient }}>
+              <div className="absolute inset-3 flex flex-col items-center justify-center rounded-full bg-white">
+                <span className="text-2xl font-bold text-slate-950">{totalCases}</span>
+                <span className="text-[9px] text-slate-400">เรื่องทั้งหมด</span>
+              </div>
+            </div>
+            <div className="w-full space-y-2.5">
+              {missionStats.length === 0 && <span className="text-xs text-slate-400">ไม่มีข้อมูลตามตัวกรองนี้</span>}
+              {missionStats.map((item) => (
+                <div key={item.mission} className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-2 text-slate-600">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: MISSION_COLORS[item.mission] ?? "#94A3B8" }} />
+                    {item.mission}
+                  </span>
+                  <span className="font-bold text-slate-900">{item.count} <span className="font-normal text-slate-400">({percent(item.count, totalCases)}%)</span></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-12">
         <section className="rounded-2xl border border-slate-200 bg-white shadow-sm xl:col-span-5">

@@ -46,6 +46,20 @@ export interface ComplaintItem {
   decisionNote?: string;
   decidedBy?: string;
   decidedDate?: string;
+  // Paper-based intake (หมายเหตุ ข้อ ๖.๑): เลขรับจากใบรับคำร้องกระดาษ แยกจากเลขที่เรื่องที่ระบบสร้างให้
+  receiptNumber?: string;
+  // บันทึกรายละเอียด/ขอขยายเวลารายขั้นตอนใน Timeline (ภาคผนวก ข ข้อ ๔.๒ หน้าจอที่ ๕ ส่วนที่ ๒)
+  stepLogs?: StepLogEntry[];
+}
+
+export interface StepLogEntry {
+  id: string;
+  stepId: number;
+  type: "note" | "extension";
+  note: string;
+  extensionDays?: number;
+  author: string;
+  timestamp: string;
 }
 
 export const ELECTION_TYPE_OPTIONS = [
@@ -89,16 +103,77 @@ export const WORKFLOW_STEPS = [
   { id: 10, title: "แจ้งผู้ร้อง/ผู้ถูกร้องและปิดเรื่อง", publicTitle: "แจ้งผลและปิดเรื่อง", section: "สนง.กกต. ส่วนกลาง", slaLabel: "15 วัน", slaDays: 15 },
 ] as const;
 
-export const CURRENT_CITIZEN = {
-  name: "นายศุภชัย ทดสอบ077",
-  shortName: "ศุภชัย ทดสอบ077",
-  initials: "ศท",
-  citizenIdMasked: "1-10**-*****-42-1",
-  phoneMasked: "08*-***-7824",
-  emailMasked: "sup***@mail.go.th",
-  province: "เชียงใหม่",
-  constituency: "เขตเลือกตั้งที่ 1",
-} as const;
+export interface CitizenAccount {
+  id: string;
+  name: string;
+  shortName: string;
+  initials: string;
+  citizenIdMasked: string;
+  phoneMasked: string;
+  emailMasked: string;
+  province: string;
+  constituency: string;
+  verifiedVia: "ThaID" | "บัญชีผู้ใช้ + OTP";
+}
+
+// บัญชีประชาชนจำลอง (ผูกกับ ThaID) สำหรับสาธิตฟีเจอร์ "ประชาชนกรอกเอง" — แทนที่การ hardcode CURRENT_CITIZEN คนเดียว
+export const MOCK_CITIZENS: CitizenAccount[] = [
+  {
+    id: "citizen-077",
+    name: "นายศุภชัย ทดสอบ077",
+    shortName: "ศุภชัย ทดสอบ077",
+    initials: "ศท",
+    citizenIdMasked: "1-10**-*****-42-1",
+    phoneMasked: "08*-***-7824",
+    emailMasked: "sup***@mail.go.th",
+    province: "เชียงใหม่",
+    constituency: "เขตเลือกตั้งที่ 1",
+    verifiedVia: "ThaID",
+  },
+  {
+    id: "citizen-1617",
+    name: "น.ส.กมลชนก ข้อมูลสาธิต1617",
+    shortName: "กมลชนก ข้อมูลสาธิต1617",
+    initials: "กข",
+    citizenIdMasked: "1-40**-*****-11-7",
+    phoneMasked: "09*-***-1123",
+    emailMasked: "kam***@mail.go.th",
+    province: "ขอนแก่น",
+    constituency: "เขตเลือกตั้งที่ 1",
+    verifiedVia: "ThaID",
+  },
+  {
+    id: "citizen-5187",
+    name: "น.ส.กัญญารัตน์ กรณีศึกษา5187",
+    shortName: "กัญญารัตน์ กรณีศึกษา5187",
+    initials: "กก",
+    citizenIdMasked: "1-92**-*****-55-3",
+    phoneMasked: "06*-***-5187",
+    emailMasked: "kany***@mail.go.th",
+    province: "ตรัง",
+    constituency: "เขตเลือกตั้งที่ 2",
+    verifiedVia: "บัญชีผู้ใช้ + OTP",
+  },
+  {
+    id: "citizen-new",
+    name: "นางสาวปวีณา ทดลองระบบ",
+    shortName: "ปวีณา ทดลองระบบ",
+    initials: "ปท",
+    citizenIdMasked: "1-15**-*****-90-4",
+    phoneMasked: "08*-***-4290",
+    emailMasked: "pave***@mail.go.th",
+    province: "สงขลา",
+    constituency: "เขตเลือกตั้งที่ 1",
+    verifiedVia: "ThaID",
+  },
+];
+
+export function getCitizenById(id: string): CitizenAccount {
+  return MOCK_CITIZENS.find((item) => item.id === id) ?? MOCK_CITIZENS[0];
+}
+
+// ค่าเริ่มต้นสำหรับโค้ดเดิม/ที่ยังไม่ผูกกับ session จริง
+export const CURRENT_CITIZEN = MOCK_CITIZENS[0];
 
 const PROVINCE_CODES: Record<string, string> = {
   "กรุงเทพมหานคร": "BKK",
@@ -147,4 +222,15 @@ export function getSlaLabel(caseItem: ComplaintItem) {
   if (caseItem.slaStatus === "COMPLETED") return "เสร็จสิ้น";
   if (caseItem.slaStatus === "OVERDUE") return `เกิน ${Math.abs(caseItem.remainingDays)} วัน`;
   return `เหลือ ${caseItem.remainingDays} วัน`;
+}
+
+const STATUS_LABELS: Record<SlaStatus, string> = {
+  NORMAL: "ปกติ",
+  NEAR_DUE: "ใกล้ครบกำหนด",
+  OVERDUE: "เกินกำหนด",
+  COMPLETED: "เสร็จสิ้น",
+};
+
+export function getStatusLabel(slaStatus: SlaStatus) {
+  return STATUS_LABELS[slaStatus];
 }
