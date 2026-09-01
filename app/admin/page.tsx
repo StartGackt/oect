@@ -192,6 +192,18 @@ export default function AdminConsolePage() {
   const [message, setMessage] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+
+  const MOCK_NOTIFICATIONS = [
+    { id: 1, title: "รับคำร้องคัดค้านใหม่ (ด่วน)", description: "มีการยื่นคำร้องคัดค้านการเลือกตั้ง ส.ส. รหัส ECT-2567-089 (กรุงเทพมหานคร)", time: "10 นาทีที่แล้ว", unread: true },
+    { id: 2, title: "SLA ใกล้ครบกำหนด (Near Due)", description: "คำร้อง ECT-2566-102 ใกล้ครบกำหนดการสืบสวน/ไต่สวน ภายใน 24 ชม.", time: "45 นาทีที่แล้ว", unread: true },
+    { id: 3, title: "ระบบเชื่อมโยง e-Saraban ขัดข้อง", description: "ตรวจพบความหน่วงสูง (Latency > 200ms) อาจส่งผลต่อการส่งมอบสำนวน", time: "1 ชั่วโมงที่แล้ว", unread: true },
+    { id: 4, title: "SLA เกินกำหนด (Overdue)", description: "มี 1 สำนวนในชั้นอนุกรรมการฯ เกินกรอบเวลาตามระเบียบ", time: "2 ชั่วโมงที่แล้ว", unread: true },
+    { id: 5, title: "อัปเดตสถานะสำนวน (ส่วนกลาง)", description: "สำนวน ECT-2566-045 ถูกส่งกลับให้ส่วนภูมิภาคแก้ไขเพิ่มเติม", time: "3 ชั่วโมงที่แล้ว", unread: false },
+    { id: 6, title: "Security Alert: พยายามเข้าสู่ระบบผิดปกติ", description: "ตรวจพบการล็อกอินผิดพลาด 5 ครั้งติดต่อกัน จาก IP 192.168.1.42", time: "เมื่อวาน", unread: false },
+    { id: 7, title: "ผู้ดูแลระบบ: อัปเดตรายชื่อพรรคการเมือง", description: "เพิ่มข้อมูลพรรคการเมืองใหม่ในฐานข้อมูลกลางเรียบร้อยแล้ว", time: "เมื่อวาน", unread: false },
+    { id: 8, title: "ประกาศระบบ: ปิดปรับปรุงประจำเดือน", description: "ระบบจะปิดให้บริการเพื่อบำรุงรักษาในคืนวันเสาร์ เวลา 01:00-03:00 น.", time: "2 วันที่แล้ว", unread: false },
+  ];
 
   const currentPersona = useMemo(() => {
     return ADMIN_ROLE_PERSONAS.find((p) => p.id === currentPersonaId) || ADMIN_ROLE_PERSONAS[0];
@@ -261,18 +273,51 @@ export default function AdminConsolePage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              aria-label={`การแจ้งเตือน ${urgentCount} รายการ`}
-              className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"
-            >
-              <Bell className="h-4 w-4" />
-              {urgentCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">
-                  {urgentCount > 99 ? "99+" : urgentCount}
-                </span>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                aria-label={`การแจ้งเตือน ${urgentCount} รายการ`}
+                className={`relative flex h-10 w-10 items-center justify-center rounded-xl border transition ${isNotificationOpen ? "bg-blue-50 border-blue-200 text-blue-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+              >
+                <Bell className="h-4 w-4" />
+                {urgentCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                    {urgentCount > 99 ? "99+" : urgentCount}
+                  </span>
+                )}
+              </button>
+
+              {isNotificationOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsNotificationOpen(false)} />
+                  <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                    <div className="mb-2 px-3 pt-2">
+                      <h3 className="text-sm font-bold text-slate-900">การแจ้งเตือนของระบบ</h3>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto">
+                      {MOCK_NOTIFICATIONS.map((notif) => (
+                        <button key={notif.id} className="flex w-full flex-col gap-1 rounded-xl p-3 text-left hover:bg-slate-50 transition">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-xs font-bold ${notif.unread ? "text-rose-600" : "text-slate-700"}`}>
+                              {notif.title}
+                            </span>
+                            {notif.unread && <span className="h-2 w-2 rounded-full bg-rose-500" />}
+                          </div>
+                          <span className="text-[11px] text-slate-500 leading-relaxed">{notif.description}</span>
+                          <span className="text-[9px] text-slate-400 mt-1">{notif.time}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-2 border-t border-slate-100 p-2 text-center">
+                      <button className="text-[11px] font-bold text-blue-700 hover:underline">
+                        ตรวจสอบ Security Audit Log
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
-            </button>
+            </div>
 
             {/* Interactive Role Switcher Dropdown */}
             <div className="relative border-l border-slate-200 pl-3">

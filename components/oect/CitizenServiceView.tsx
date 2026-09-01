@@ -31,7 +31,7 @@ interface CitizenServiceViewProps {
   onUpdateCase?: (updated: ComplaintItem) => void;
 }
 
-export type CitizenTab = "overview" | "new" | "tracking" | "correction" | "result" | "history" | "profile";
+export type CitizenTab = "overview" | "new" | "tracking" | "correction" | "result" | "history" | "profile" | "search_election";
 
 const TAB_META: Record<CitizenTab, { title: string; description: string }> = {
   overview: { title: "ภาพรวมคำร้องของฉัน", description: "ตรวจสอบสถานะล่าสุดและรายการที่ต้องดำเนินการ" },
@@ -41,10 +41,20 @@ const TAB_META: Record<CitizenTab, { title: string; description: string }> = {
   result: { title: "ผลการพิจารณา", description: "ตรวจสอบผลและดาวน์โหลดเอกสารที่เปิดเผยได้" },
   history: { title: "ประวัติคำร้องของฉัน", description: "ค้นหาและตรวจสอบคำร้องที่เคยยื่นทั้งหมด" },
   profile: { title: "ข้อมูลส่วนตัว", description: "ตรวจสอบข้อมูลบัญชีและช่องทางการแจ้งเตือน" },
+  search_election: { title: "ค้นหาข้อมูลการเลือกตั้ง", description: "ค้นหาข้อมูลผู้สมัคร ผลการเลือกตั้ง และสถิติที่เกี่ยวข้อง" },
 };
+
+const MOCK_ELECTION_RESULTS = [
+  { id: "1", date: "2023-05-14", province: "กรุงเทพมหานคร", electionType: "สส", electionName: "การเลือกตั้งสมาชิกสภาผู้แทนราษฎร ปี 2566", status: "ประกาศผลแล้ว", voterCount: "2,543,120" },
+  { id: "2", date: "2023-05-14", province: "เชียงใหม่", electionType: "สส", electionName: "การเลือกตั้งสมาชิกสภาผู้แทนราษฎร ปี 2566", status: "ประกาศผลแล้ว", voterCount: "1,234,567" },
+  { id: "3", date: "2024-03-24", province: "ขอนแก่น", electionType: "สว", electionName: "การเลือกตั้งสมาชิกวุฒิสภา ปี 2567", status: "อยู่ระหว่างพิจารณาคำร้อง", voterCount: "1,100,450" },
+  { id: "4", date: "2023-11-20", province: "ภูเก็ต", electionType: "เทศบาล", electionName: "การเลือกตั้งนายกเทศมนตรีและสมาชิกสภาเทศบาลเมืองภูเก็ต", status: "ประกาศผลแล้ว", voterCount: "145,230" },
+];
 
 export default function CitizenServiceView({ cases, currentCitizen, activeTab, onTabChange, onOpenNewComplaint, onSelectCase, onUpdateCase }: CitizenServiceViewProps) {
   const [search, setSearch] = useState("");
+  const [electionSearch, setElectionSearch] = useState({ startDate: "", endDate: "", province: "", electionType: "" });
+  const [electionResults, setElectionResults] = useState<typeof MOCK_ELECTION_RESULTS | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [editedDetails, setEditedDetails] = useState("");
   const [correctionSubmittedSuccess, setCorrectionSubmittedSuccess] = useState(false);
@@ -91,6 +101,42 @@ export default function CitizenServiceView({ cases, currentCitizen, activeTab, o
       details: `ผู้ร้องแก้ไข/เพิ่มเติมรายละเอียดพฤติการณ์ และแนบเอกสาร ${finalDoc}`,
     });
     setCorrectionSubmittedSuccess(true);
+  };
+
+  const handleSearchElection = () => {
+    if (!electionSearch.province && !electionSearch.electionType && !electionSearch.startDate && !electionSearch.endDate) {
+      setElectionResults(MOCK_ELECTION_RESULTS);
+      return;
+    }
+
+    const typeNames: Record<string, string> = {
+      "สส": "สมาชิกสภาผู้แทนราษฎร",
+      "สว": "สมาชิกวุฒิสภา",
+      "อบจ": "นายกองค์การบริหารส่วนจังหวัด",
+      "อบต": "นายกองค์การบริหารส่วนตำบล",
+      "เทศบาล": "นายกเทศมนตรี",
+      "กทม": "ผู้ว่าราชการกรุงเทพมหานคร",
+      "พัทยา": "นายกเมืองพัทยา",
+      "ประชามติ": "การออกเสียงประชามติ"
+    };
+
+    const prov = electionSearch.province || "กรุงเทพมหานคร";
+    const type = electionSearch.electionType || "สส";
+    const typeLabel = typeNames[type] || "สมาชิกสภาผู้แทนราษฎร";
+    const date = electionSearch.startDate || "2024-05-14";
+    const yearTh = parseInt(date.split("-")[0]) + 543;
+    
+    const generatedResult = {
+      id: "gen-1",
+      date: date,
+      province: prov,
+      electionType: type,
+      electionName: type === "ประชามติ" ? `การออกเสียงประชามติ ปี ${yearTh}` : `การเลือกตั้ง${typeLabel} ปี ${yearTh} (จ.${prov})`,
+      status: "ประกาศผลแล้ว",
+      voterCount: (Math.floor(Math.random() * 900000) + 100000).toLocaleString()
+    };
+    
+    setElectionResults([generatedResult]);
   };
 
   return (
@@ -225,6 +271,83 @@ export default function CitizenServiceView({ cases, currentCitizen, activeTab, o
         <section className="grid gap-5 lg:grid-cols-[1fr_340px]">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><h2 className="flex items-center gap-2 text-sm font-bold text-slate-950"><UserRound className="h-5 w-5 text-blue-700" /> ข้อมูลส่วนตัวและสิทธิ์การยื่น</h2><div className="mt-5 grid gap-4 sm:grid-cols-2"><ProfileField label="ชื่อ-นามสกุล" value={currentCitizen.name} /><ProfileField label="เลขประจำตัวประชาชน" value={currentCitizen.citizenIdMasked} /><ProfileField label="สถานะผู้ใช้" value="ผู้มีสิทธิเลือกตั้งในเขต" /><ProfileField label="เขตเลือกตั้ง" value={`${currentCitizen.province} ${currentCitizen.constituency}`} /><ProfileField label="เบอร์โทรศัพท์" value={currentCitizen.phoneMasked} /><ProfileField label="อีเมล" value={currentCitizen.emailMasked} /></div></div>
           <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><h3 className="flex items-center gap-2 text-xs font-bold text-slate-900"><Settings2 className="h-4 w-4 text-blue-700" /> ช่องทางแจ้งเตือน</h3><div className="mt-4 space-y-3"><Toggle label="แจ้งเตือนผ่านแอป" enabled /><Toggle label="อีเมล" enabled /><Toggle label="SMS" enabled={false} /></div><div className="mt-5 rounded-xl bg-blue-50 p-3 text-[10px] leading-5 text-blue-800">ยืนยันตัวตนผ่าน {currentCitizen.verifiedVia} หากต้องการแก้ไขข้อมูลหลัก กรุณาติดต่อหน่วยงานต้นทาง</div></aside>
+        </section>
+      )}
+
+      {activeTab === "search_election" && (
+        <section className="space-y-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+              <Search className="h-5 w-5 text-[#1B3F8B]" /> ค้นหาข้อมูลการเลือกตั้ง
+            </h2>
+            <div className="mt-5 grid gap-3 md:grid-cols-[1fr_1fr_1fr_1fr_auto] md:items-end">
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold text-slate-700 uppercase tracking-wide">ตั้งแต่ (วัน/เดือน/ปี)</label>
+                <input type="date" value={electionSearch.startDate} onChange={e => setElectionSearch({ ...electionSearch, startDate: e.target.value })} className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold text-slate-700 uppercase tracking-wide">ถึง (วัน/เดือน/ปี)</label>
+                <input type="date" value={electionSearch.endDate} onChange={e => setElectionSearch({ ...electionSearch, endDate: e.target.value })} className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold text-slate-700 uppercase tracking-wide">จังหวัด</label>
+                <select value={electionSearch.province} onChange={e => setElectionSearch({ ...electionSearch, province: e.target.value })} className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                  <option value="">ทั้งหมด</option>
+                  <option value="กรุงเทพมหานคร">กรุงเทพมหานคร</option>
+                  <option value="เชียงใหม่">เชียงใหม่</option>
+                  <option value="ขอนแก่น">ขอนแก่น</option>
+                  <option value="ภูเก็ต">ภูเก็ต</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold text-slate-700 uppercase tracking-wide">ประเภทเลือกตั้ง</label>
+                <select value={electionSearch.electionType} onChange={e => setElectionSearch({ ...electionSearch, electionType: e.target.value })} className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                  <option value="">ทั้งหมด</option>
+                  <option value="สส">ส.ส.</option>
+                  <option value="สว">ส.ว.</option>
+                  <option value="อบจ">อบจ.</option>
+                  <option value="อบต">อบต.</option>
+                  <option value="เทศบาล">เทศบาล</option>
+                  <option value="กทม">กทม.</option>
+                  <option value="พัทยา">เมืองพัทยา</option>
+                  <option value="ประชามติ">ประชามติ</option>
+                </select>
+              </div>
+              <button type="button" onClick={handleSearchElection} className="flex h-10 w-full md:w-auto items-center justify-center gap-2 rounded-xl bg-[#1B3F8B] px-6 text-xs font-semibold text-white transition hover:bg-blue-900">
+                ค้นหา
+              </button>
+            </div>
+          </div>
+
+          {electionResults !== null && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 mb-4">ผลการค้นหา ({electionResults.length} รายการ)</h3>
+              {electionResults.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 py-12 text-center">
+                  <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-400"><Search className="h-5 w-5" /></span>
+                  <p className="mt-3 text-xs text-slate-500">ไม่พบข้อมูลที่ตรงกับเงื่อนไข</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {electionResults.map((result) => (
+                    <div key={result.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50/50 grid sm:grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <div className="font-bold text-[#1B3F8B] text-sm mb-1">{result.electionName}</div>
+                        <div className="text-slate-500 mt-2">เลือกตั้งประเภท {result.electionType} จ.{result.province}</div>
+                        <div className="text-slate-500">จำนวนผู้มาใช้สิทธิ: {result.voterCount} คน</div>
+                      </div>
+                      <div className="sm:text-right">
+                        <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${result.status === "ประกาศผลแล้ว" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                          {result.status}
+                        </span>
+                        <div className="text-slate-500 mt-2">วันที่จัดการเลือกตั้ง: {result.date}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
     </div>

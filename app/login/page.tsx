@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import Image from "next/image";
+import QRCode from "react-qr-code";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -251,23 +252,63 @@ function Field({ id, label, icon, action, children }: { id: string; label: strin
 }
 
 function ThaIdPanel({ onSuccess, isLoading }: { onSuccess: () => void; isLoading: boolean }) {
+  const [timeLeft, setTimeLeft] = useState(58);
+
+  useEffect(() => {
+    // Auto login after 3 seconds
+    const timer = setTimeout(() => {
+      onSuccess();
+    }, 3000);
+
+    // Countdown timer display
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [onSuccess]);
+
+  const formattedTime = `00:${timeLeft.toString().padStart(2, '0')}`;
+
   return (
-    <div className="rounded-2xl border border-[#4FB3E8]/45 bg-[#4FB3E8]/10 p-4 sm:p-5">
-      <div className="grid items-center gap-5 sm:grid-cols-[138px_1fr]">
-        <div className="relative mx-auto flex h-[138px] w-[138px] items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <QrCode className="h-[108px] w-[108px] text-slate-950" />
-          <span className="absolute inset-0 m-auto flex h-9 w-9 items-center justify-center rounded-lg border border-[#4FB3E8] bg-white text-[#1B3F8B]"><Fingerprint className="h-5 w-5" /></span>
-        </div>
-        <div>
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-[#1B3F8B]"><Fingerprint className="h-4 w-4 text-[#4FB3E8]" /> ยืนยันตัวตนด้วย ThaID</h3>
-          <ol className="mt-3 space-y-2 text-[10px] leading-5 text-[#1B3F8B]/75">
-            {["เปิดแอปพลิเคชัน ThaID", "เลือกเมนูสแกน QR Code", "ตรวจสอบและยืนยันการเข้าสู่ระบบ"].map((step, index) => <li key={step} className="flex gap-2"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FFD600] text-[9px] font-semibold text-[#1B3F8B]">{index + 1}</span>{step}</li>)}
-          </ol>
+    <div className="mx-auto flex w-full max-w-sm flex-col items-center justify-center bg-[#4674C1] p-6 text-white shadow-lg sm:rounded-xl">
+      <div className="text-center font-bold">
+        <h2 className="text-3xl leading-tight">เข้าสู่ระบบ</h2>
+        <p className="text-sm">ด้วย ThaID</p>
+      </div>
+
+      <div className="mt-5 text-center text-[15px] font-bold leading-relaxed">
+        ระบบบริหารกองทุนช่วยเหลือผู้ประสบ<br />สาธารณภัยแบบดิจิทัล
+      </div>
+
+      <div className="mt-3 text-sm font-bold">
+        หมดเวลาใน : {formattedTime}
+      </div>
+
+      <div className="mt-4 flex aspect-square w-[240px] items-center justify-center bg-white p-2">
+        <div className="relative flex h-full w-full items-center justify-center">
+          <QRCode value="https://thaid.dopa.go.th/login/mock" style={{ height: "auto", maxWidth: "100%", width: "100%" }} />
+          <div className="absolute flex h-10 w-16 items-center justify-center bg-white">
+            <span className="text-lg font-bold text-[#1B3F8B]">Tha<span className="text-[#F5A623]">i</span>D</span>
+          </div>
         </div>
       </div>
-      <button type="button" onClick={onSuccess} disabled={isLoading} className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1B3F8B] text-xs font-semibold text-white transition hover:bg-[#4FB3E8] hover:text-[#1B3F8B] disabled:opacity-70">
-        {isLoading ? "กำลังยืนยันตัวตน..." : "จำลองการยืนยัน ThaID สำเร็จ"}<Check className="h-4 w-4" />
-      </button>
+
+      <div className="mt-px w-[240px] border-t border-white/20 pt-1 text-right text-[10px] text-white">
+        หมายเลขอ้างอิง : B72A4Y
+      </div>
+
+      <div className="mt-6 text-center text-[11px] leading-relaxed">
+        คิวอาร์โค้ดนี้เป็นสิ่งยืนยันตนทางดิจิทัล ออกให้โดย<br />
+        กรมการปกครอง กระทรวงมหาดไทย
+      </div>
+
+      <div className="mt-5 w-[240px] text-right text-[10px] text-white/80">
+        v.1.5.1
+      </div>
     </div>
   );
 }

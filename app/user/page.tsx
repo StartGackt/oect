@@ -136,6 +136,12 @@ const CITIZEN_NAV_ITEMS = [
     description: "ข้อมูลส่วนตัวและการแจ้งเตือน",
     icon: UserRound,
   },
+  {
+    id: "search_election" as const,
+    label: "ค้นหาข้อมูลการเลือกตั้ง",
+    description: "ข้อมูลผู้สมัครและผลการเลือกตั้ง",
+    icon: Search,
+  },
 ];
 
 const PAGE_META: Record<PortalView, { eyebrow: string; title: string; description: string }> = {
@@ -212,6 +218,16 @@ export default function UserPortalPage() {
   const [citizenTab, setCitizenTab] = useState<CitizenTab>("overview");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+
+  const MOCK_NOTIFICATIONS = [
+    { id: 1, title: "ยื่นคำร้องสำเร็จ", description: "ระบบได้รับคำร้องคัดค้านเลขที่ ECT-2567-001 ของท่านเรียบร้อยแล้ว", time: "10 นาทีที่แล้ว", unread: true },
+    { id: 2, title: "ต้องการเอกสารเพิ่มเติม (ด่วน)", description: "เจ้าหน้าที่ขอให้ท่านแนบสำเนาบัตรประชาชนเพิ่มเติมสำหรับคำร้อง ECT-2566-701 ภายใน 3 วัน", time: "2 ชั่วโมงที่แล้ว", unread: true },
+    { id: 3, title: "อัปเดตความคืบหน้าคำร้อง", description: "คำร้อง ECT-2566-892 ของท่านเปลี่ยนสถานะเป็น 'อยู่ระหว่างสืบสวน/ไต่สวน'", time: "เมื่อวาน", unread: false },
+    { id: 4, title: "แจ้งผลการพิจารณา", description: "คณะกรรมการการเลือกตั้งมีมติ 'ยกคำร้อง' สำหรับคำร้อง ECT-2565-421 ท่านสามารถดูรายละเอียดได้ที่เมนูผลการพิจารณา", time: "3 วันที่แล้ว", unread: false },
+    { id: 5, title: "ความปลอดภัยของบัญชี", description: "พบการเข้าสู่ระบบใหม่จากอุปกรณ์ Chrome บน Windows (เชียงใหม่)", time: "สัปดาห์ที่แล้ว", unread: false },
+    { id: 6, title: "ประกาศจาก กกต.", description: "เชิญชวนประชาชนร่วมตรวจสอบบัญชีรายชื่อผู้มีสิทธิเลือกตั้ง สว. ประจำปี 2567 ผ่านแอปพลิเคชัน", time: "เดือนที่แล้ว", unread: false }
+  ];
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedRoleId, setSelectedRoleId] = useState<string>("intake");
   const [caseStatusFilter, setCaseStatusFilter] = useState<string>("ALL");
@@ -344,18 +360,51 @@ export default function UserPortalPage() {
               <span>Admin Console</span>
             </Link>
 
-            <button
-              type="button"
-              className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"
-              aria-label={`การแจ้งเตือน ${notificationCount} รายการ`}
-            >
-              <Bell className="h-4 w-4" />
-              {notificationCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">
-                  {notificationCount > 99 ? "99+" : notificationCount}
-                </span>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                className={`relative inline-flex h-10 w-10 items-center justify-center rounded-xl border transition ${isNotificationOpen ? "bg-blue-50 border-blue-200 text-blue-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                aria-label={`การแจ้งเตือน ${notificationCount} รายการ`}
+              >
+                <Bell className="h-4 w-4" />
+                {notificationCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                    {notificationCount > 99 ? "99+" : notificationCount}
+                  </span>
+                )}
+              </button>
+              
+              {isNotificationOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsNotificationOpen(false)} />
+                  <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                    <div className="mb-2 px-3 pt-2">
+                      <h3 className="text-sm font-bold text-slate-900">การแจ้งเตือน</h3>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto">
+                      {MOCK_NOTIFICATIONS.map((notif) => (
+                        <button key={notif.id} className="flex w-full flex-col gap-1 rounded-xl p-3 text-left hover:bg-slate-50 transition">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-xs font-bold ${notif.unread ? "text-[#1B3F8B]" : "text-slate-700"}`}>
+                              {notif.title}
+                            </span>
+                            {notif.unread && <span className="h-2 w-2 rounded-full bg-rose-500" />}
+                          </div>
+                          <span className="text-[11px] text-slate-500 leading-relaxed">{notif.description}</span>
+                          <span className="text-[9px] text-slate-400 mt-1">{notif.time}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-2 border-t border-slate-100 p-2 text-center">
+                      <button className="text-[11px] font-bold text-blue-700 hover:underline">
+                        ดูการแจ้งเตือนทั้งหมด
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
-            </button>
+            </div>
 
             <div className="hidden items-center gap-2 border-l border-slate-200 pl-3 sm:flex">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1B3F8B] text-xs font-bold text-white">{isCitizenPortal ? currentCitizen.initials : "WK"}</span>
