@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import type { ComplaintItem } from "@/components/oect/complaintDomain";
 
-const STORAGE_KEY = "oect-cases-v1";
+const STORAGE_KEY = "oect-cases-v3";
 
 export function useComplaintsStore(initialCases: ComplaintItem[]): [ComplaintItem[], Dispatch<SetStateAction<ComplaintItem[]>>] {
   const [cases, setCasesState] = useState<ComplaintItem[]>(initialCases);
