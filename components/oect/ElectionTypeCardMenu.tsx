@@ -16,7 +16,7 @@ export default function ElectionTypeCardMenu({ cases, value, onChange }: Electio
     <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="เลือกประเภทการเลือกตั้ง">
       <ElectionTypeCard label="ทั้งหมด" active={value === "ALL"} count={countFor("ALL")} onClick={() => onChange("ALL")} />
       {ELECTION_TYPE_OPTIONS.map((option) => (
-        <ElectionTypeCard key={option.value} label={option.value} count={countFor(option.value)} active={value === option.value} onClick={() => onChange(option.value)} />
+        <ElectionTypeCard key={option.value} label={option.value === "ทต." ? option.label : option.value} count={countFor(option.value)} active={value === option.value} onClick={() => onChange(option.value)} />
       ))}
     </div>
   );

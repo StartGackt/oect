@@ -51,6 +51,10 @@ export default function CaseListView({
       const query = searchQuery.toLowerCase();
       const searchTarget = [
         caseItem.caseNumber,
+        caseItem.receivedDate,
+        formatThaiDate(caseItem.receivedDate),
+        caseItem.electionType,
+        caseItem.constituency,
         caseItem.province,
         caseItem.district,
         caseItem.complainants,
@@ -89,7 +93,7 @@ export default function CaseListView({
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="search"
-              placeholder="ค้นหาเลขที่เรื่อง ผู้ร้อง ผู้ถูกร้อง ข้อกล่าวหา หรือจังหวัด"
+              placeholder="ค้นหาเลขที่เรื่อง วันที่รับเรื่อง ประเภท เขตเลือกตั้ง หรือชื่อบุคคล"
               value={searchQuery}
               onChange={(event) => {
                 setSearchQuery(event.target.value);
