@@ -7,6 +7,7 @@ import {
   Check,
   ChevronRight,
   Download,
+  Eye,
   FileCheck2,
   FilePlus2,
   FileText,
@@ -66,6 +67,21 @@ export default function CitizenServiceView({ cases, currentCitizen, activeTab, o
   const processingCount = myCases.filter((item) => item.slaStatus !== "COMPLETED").length;
   const completedCount = myCases.filter((item) => item.slaStatus === "COMPLETED").length;
   const pageMeta = TAB_META[activeTab];
+  const filteredHistoryCases = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return myCases;
+
+    return myCases.filter((item) => [
+      item.caseNumber,
+      item.allegation,
+      item.electionType,
+      item.constituency,
+      item.district,
+      item.province,
+      item.respondent,
+      getPublicStatus(item),
+    ].join(" ").toLowerCase().includes(query));
+  }, [myCases, search]);
 
   useEffect(() => {
     setEditedDetails(correctionCase?.details ?? "");
@@ -262,8 +278,73 @@ export default function CitizenServiceView({ cases, currentCitizen, activeTab, o
 
       {activeTab === "history" && (
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-sm font-bold text-slate-950">ประวัติคำร้องทั้งหมดของฉัน</h2><p className="mt-1 text-[10px] text-slate-500">ข้อมูลส่วนบุคคลถูกปกปิดเมื่อพิมพ์หรือดาวน์โหลด</p></div><label className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ค้นหาเลขคำร้องหรือประเภท" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs outline-none sm:w-64" /></label></div>
-          <div className="divide-y divide-slate-100">{myCases.filter((item) => `${item.caseNumber} ${item.allegation}`.toLowerCase().includes(search.toLowerCase())).map((caseItem) => <button key={caseItem.id} type="button" onClick={() => onSelectCase(caseItem)} className="grid w-full gap-3 p-4 text-left transition hover:bg-slate-50 sm:grid-cols-[1.2fr_1fr_1fr_auto] sm:items-center"><div><div className="text-xs font-bold text-slate-900">{caseItem.caseNumber}</div><div className="mt-1 text-[10px] text-slate-500">ยื่นเมื่อ {formatThaiDate(caseItem.receivedDate)}</div></div><div className="text-xs text-slate-600">{caseItem.allegation}</div><div className="text-[11px] text-slate-500">{caseItem.currentStage}</div><ChevronRight className="h-4 w-4 text-slate-400" /></button>)}</div>
+          <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-sm font-bold text-slate-950">ประวัติคำร้องทั้งหมดของฉัน</h2>
+              <p className="mt-1 text-[10px] text-slate-500">ข้อมูลคำร้องที่ยื่นด้วยบัญชีนี้ และสถานะที่เปิดเผยแก่ผู้ร้อง</p>
+            </div>
+            <div className="flex flex-col gap-2 sm:items-end">
+              <label className="relative">
+                <span className="sr-only">ค้นหาประวัติคำร้อง</span>
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ค้นหาเลขคำร้องหรือประเภท" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs outline-none transition focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-100 sm:w-64" />
+              </label>
+              <div className="text-[10px] text-slate-500">พบ <strong className="text-slate-900">{filteredHistoryCases.length}</strong> จาก {myCases.length} เรื่อง</div>
+            </div>
+          </div>
+
+          <div className="divide-y divide-slate-100 md:hidden">
+            {filteredHistoryCases.length === 0 ? <div className="py-14 text-center text-xs text-slate-400">ไม่พบข้อมูลที่ตรงกับคำค้นหา</div> : filteredHistoryCases.map((caseItem) => (
+              <button key={caseItem.id} type="button" onClick={() => onSelectCase(caseItem)} className="w-full p-4 text-left transition hover:bg-blue-50/40">
+                <div className="flex items-start justify-between gap-3">
+                  <div><div className="font-bold text-[#1B3F8B]">{caseItem.caseNumber}</div><div className="mt-1 text-[10px] text-slate-500">{caseItem.electionType} · ยื่นเมื่อ {formatThaiDate(caseItem.receivedDate)}</div></div>
+                  <CitizenHistoryStatus caseItem={caseItem} />
+                </div>
+                <div className="mt-3 text-xs font-semibold text-slate-800">{caseItem.allegation}</div>
+                <div className="mt-2 line-clamp-1 text-[10px] text-slate-500">ผู้ถูกร้อง: {caseItem.respondent}</div>
+                <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-[10px]"><span className="text-slate-500">{caseItem.province} · {caseItem.currentStage}</span><span className="font-bold text-[#1B3F8B]">ดูรายละเอียด</span></div>
+              </button>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[1380px] text-left text-xs">
+              <thead className="sticky top-0 bg-slate-50 text-[10px] font-bold text-slate-600">
+                <tr>
+                  <th className="whitespace-nowrap border-b border-slate-200 px-3 py-3.5">ลำดับ</th>
+                  <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">เลขที่เรื่องร้องเรียน</th>
+                  <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">วันที่ยื่นคำร้อง</th>
+                  <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">ประเภทการเลือกตั้ง</th>
+                  <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">เขตเลือกตั้ง</th>
+                  <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">อำเภอ</th>
+                  <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">จังหวัด</th>
+                  <th className="border-b border-slate-200 px-4 py-3.5">ชื่อผู้ถูกร้อง</th>
+                  <th className="border-b border-slate-200 px-4 py-3.5">ข้อกล่าวหา</th>
+                  <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">สถานะปัจจุบัน</th>
+                  <th className="whitespace-nowrap border-b border-slate-200 px-4 py-3.5">สถานะ Timeline ล่าสุด</th>
+                  <th className="border-b border-slate-200 px-4 py-3.5 text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredHistoryCases.length === 0 ? <tr><td colSpan={12} className="py-14 text-center text-slate-400">ไม่พบข้อมูลที่ตรงกับคำค้นหา</td></tr> : filteredHistoryCases.map((caseItem, index) => (
+                  <tr key={caseItem.id} onClick={() => onSelectCase(caseItem)} className="cursor-pointer align-top transition hover:bg-blue-50/40">
+                    <td className="px-3 py-4 text-slate-400">{index + 1}</td>
+                    <td className="px-4 py-4"><div className="font-bold text-[#1B3F8B]">{caseItem.caseNumber}</div><div className="mt-1 text-[10px] text-slate-500">คำร้องของฉัน</div></td>
+                    <td className="whitespace-nowrap px-4 py-4 text-slate-600">{formatThaiDate(caseItem.receivedDate)}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-slate-700">{caseItem.electionType}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-slate-700">{caseItem.constituency}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-slate-700">{caseItem.district}</td>
+                    <td className="whitespace-nowrap px-4 py-4 text-slate-700">{caseItem.province}</td>
+                    <td className="max-w-44 px-4 py-4"><div className="line-clamp-2 leading-5 text-slate-700">{caseItem.respondent}</div></td>
+                    <td className="max-w-64 px-4 py-4"><div className="line-clamp-2 leading-5 text-slate-700">{caseItem.allegation}</div></td>
+                    <td className="whitespace-nowrap px-4 py-4"><CitizenHistoryStatus caseItem={caseItem} /></td>
+                    <td className="max-w-56 px-4 py-4 text-slate-700">{caseItem.currentStage}</td>
+                    <td className="px-4 py-4 text-center"><button type="button" onClick={(event) => { event.stopPropagation(); onSelectCase(caseItem); }} className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-[#1B3F8B] transition hover:border-[#1B3F8B] hover:bg-blue-50" aria-label={`เปิดคำร้อง ${caseItem.caseNumber}`}><Eye className="h-4 w-4" /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
 
@@ -352,6 +433,18 @@ export default function CitizenServiceView({ cases, currentCitizen, activeTab, o
       )}
     </div>
   );
+}
+
+function CitizenHistoryStatus({ caseItem }: { caseItem: ComplaintItem }) {
+  const className = caseItem.slaStatus === "OVERDUE"
+    ? "bg-rose-100 text-rose-700"
+    : caseItem.slaStatus === "NEAR_DUE"
+      ? "bg-amber-100 text-amber-800"
+      : caseItem.slaStatus === "COMPLETED"
+        ? "bg-slate-100 text-slate-700"
+        : "bg-emerald-100 text-emerald-800";
+
+  return <span className={`inline-flex shrink-0 rounded-full px-2 py-1 text-[9px] font-bold ${className}`}>{getPublicStatus(caseItem)}</span>;
 }
 
 function CurrentCaseCard({ caseItem, onTrack }: { caseItem: ComplaintItem; onTrack: () => void }) {
