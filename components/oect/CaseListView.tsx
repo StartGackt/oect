@@ -121,12 +121,14 @@ export default function CaseListView({
             ))}
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            <select value={selectedProvince} onChange={(event) => { setSelectedProvince(event.target.value); setCurrentPage(1); }} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs outline-none">
-              <option value="ALL">ทุกจังหวัด</option>
-              {provinceList.map((province) => <option key={province} value={province}>{province}</option>)}
-            </select>
-            <select value={selectedMission} onChange={(event) => { setSelectedMission(event.target.value); setCurrentPage(1); }} className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs outline-none">
+          <div className="flex w-full sm:w-auto gap-2">
+            {provinceList.length > 1 && (
+              <select value={selectedProvince} onChange={(event) => { setSelectedProvince(event.target.value); setCurrentPage(1); }} className="flex-1 sm:flex-none rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs outline-none">
+                <option value="ALL">ทุกจังหวัด</option>
+                {provinceList.map((province) => <option key={province} value={province}>{province}</option>)}
+              </select>
+            )}
+            <select value={selectedMission} onChange={(event) => { setSelectedMission(event.target.value); setCurrentPage(1); }} className="flex-1 sm:flex-none rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs outline-none">
               <option value="ALL">ทุกกลุ่มภารกิจ</option>
               {MISSION_GROUP_OPTIONS.map((mission) => <option key={mission} value={mission}>{mission}</option>)}
             </select>
