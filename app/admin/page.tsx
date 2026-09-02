@@ -73,6 +73,7 @@ export interface RolePersona {
   avatarBg: string;
   description: string;
   allowedTabs: AdminView[];
+  province?: string;
 }
 
 export const ADMIN_ROLE_PERSONAS: RolePersona[] = [
@@ -119,6 +120,7 @@ export const ADMIN_ROLE_PERSONAS: RolePersona[] = [
     avatarBg: "bg-indigo-700",
     description: "สั่งรับ/ไม่รับคำร้อง แต่งตั้งพนักงานสืบสวน และติดตาม SLA ภายในจังหวัด",
     allowedTabs: ["overview", "cases", "workspace", "sla", "governance"],
+    province: "ขอนแก่น",
   },
   {
     id: "provincial-officer",
@@ -130,6 +132,7 @@ export const ADMIN_ROLE_PERSONAS: RolePersona[] = [
     avatarBg: "bg-blue-700",
     description: "รับคำร้อง ตรวจองค์ประกอบ สั่งแก้ไขเพิ่มเติม และแสวงหาพยานหลักฐาน",
     allowedTabs: ["overview", "cases", "workspace", "sla"],
+    province: "ขอนแก่น",
   },
   {
     id: "data-admin",
@@ -209,8 +212,15 @@ export default function AdminConsolePage() {
     return ADMIN_ROLE_PERSONAS.find((p) => p.id === currentPersonaId) || ADMIN_ROLE_PERSONAS[0];
   }, [currentPersonaId]);
 
+  const activeCases = useMemo(() => {
+    if (currentPersona.id === "provincial-director" && currentPersona.province) {
+      return cases.filter(c => c.province === currentPersona.province);
+    }
+    return cases;
+  }, [cases, currentPersona]);
+
   const meta = PAGE_META[activeView];
-  const urgentCount = useMemo(() => cases.filter((item) => item.slaStatus === "OVERDUE" || item.slaStatus === "NEAR_DUE").length, [cases]);
+  const urgentCount = useMemo(() => activeCases.filter((item) => item.slaStatus === "OVERDUE" || item.slaStatus === "NEAR_DUE").length, [activeCases]);
 
   const selectView = (view: AdminView) => {
     if (!currentPersona.allowedTabs.includes(view)) {
@@ -577,7 +587,7 @@ export default function AdminConsolePage() {
 
               {activeView === "overview" && (
                 <DashboardView
-                  cases={cases}
+                  cases={activeCases}
                   roleId="admin"
                   onSelectCase={setSelectedCase}
                   onViewAllCases={() => {
@@ -592,7 +602,7 @@ export default function AdminConsolePage() {
               )}
               {activeView === "cases" && (
                 <CaseListView
-                  cases={cases}
+                  cases={activeCases}
                   onSelectCase={setSelectedCase}
                   openNewModal={() => setIsNewComplaintOpen(true)}
                   searchQuery={globalSearch}
@@ -602,10 +612,10 @@ export default function AdminConsolePage() {
                 />
               )}
               {activeView === "workspace" && (
-                <RoleWorkspaceView cases={cases} roleId="admin" onSelectCase={setSelectedCase} />
+                <RoleWorkspaceView cases={activeCases} roleId="admin" onSelectCase={setSelectedCase} />
               )}
-              {activeView === "sla" && <SlaMonitoringView cases={cases} onSelectCase={setSelectedCase} />}
-              {activeView === "governance" && <GovernanceCenterView cases={cases} />}
+              {activeView === "sla" && <SlaMonitoringView cases={activeCases} onSelectCase={setSelectedCase} />}
+              {activeView === "governance" && <GovernanceCenterView cases={activeCases} />}
               {activeView === "users" && <AdminUserManagementView onNotify={notify} />}
               {activeView === "workflow" && <AdminWorkflowSlaView onNotify={notify} />}
               {activeView === "master" && <AdminMasterDataView onNotify={notify} />}
